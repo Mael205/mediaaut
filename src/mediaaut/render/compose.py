@@ -44,12 +44,12 @@ def _video_encoder() -> list[str]:
     return ["-c:v", "libx264", "-preset", "medium", "-crf", "20"]
 
 
-def _background_chain(
+def _crop_chain(
     index: int, clip: Clip, width: int, video_height: int, fps: int, zoom: float
 ) -> str:
-    """Chaine de filtres amenant un plan source au format cible.
+    """Recadre la source pour remplir le cadre, quitte a couper les bords.
 
-    Le plan est d'abord suréchantillonne a 2x avant le zoom : `zoompan`
+    Le plan est d'abord surechantillonne a 2x avant le zoom : `zoompan`
     travaille sur une grille de pixels entiers et produit des saccades
     visibles si on le fait operer directement a la resolution de sortie.
     """
@@ -73,6 +73,22 @@ def _background_chain(
 
     steps += ["format=yuv420p", "setpts=PTS-STARTPTS"]
     return f"[{index}:v]" + ",".join(steps) + f"[v{index}]"
+
+
+def _blur_fill_chain(index: int, width: int, video_height: int, fps: int) -> str:
+    """Inscrit la source entiere au centre, sur un fond flouté tire d'elle-meme.
+
+    C'est la reponse standard au materiau horizontal : recadrer un 16:9 en
+    9:16 ampute l'action des deux tiers de sa largeur. Le fond assombri
+    evite que le flou n'attire l'oeil hors du sujet.
+    """
+    return (
+        f"[{index}:v]fps={fps},setsar=1,setpts=PTS-STARTPTS,split=2[bg{index}][fg{index}];"
+        f"[bg{index}]scale={width}:{video_height}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{video_height},gblur=sigma=32,eq=brightness=-0.12:saturation=0.8[bb{index}];"
+        f"[fg{index}]scale={width}:{video_height}:force_original_aspect_ratio=decrease[ff{index}];"
+        f"[bb{index}][ff{index}]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v{index}]"
+    )
 
 
 def render_short(
@@ -106,7 +122,12 @@ def render_short(
                 "-t", f"{clip.duration:.3f}",
                 "-i", str(clip.path),
             ]
-            graph.append(_background_chain(index, clip, width, video_height, fps, template.zoom))
+            if template.fill_mode == "blur":
+                graph.append(_blur_fill_chain(index, width, video_height, fps))
+            else:
+                graph.append(
+                    _crop_chain(index, clip, width, video_height, fps, template.zoom)
+                )
         concat_inputs = "".join(f"[v{i}]" for i in range(len(clips)))
         graph.append(f"{concat_inputs}concat=n={len(clips)}:v=1:a=0[vcat]")
         video_count = len(clips)
@@ -162,8 +183,14 @@ def render_short(
     else:
         audio_out = "a_voice"
 
-    # Limiteur doux : evite l'ecretage quand voix et musique s'additionnent.
-    graph.append(f"[{audio_out}]alimiter=limit=0.95:level=disabled[aout]")
+    # Normalisation a -14 LUFS : c'est la cible vers laquelle YouTube,
+    # Instagram et TikTok ramenent la lecture. Livrer plus fort ne rend pas
+    # plus fort, cela fait seulement ecraser le mix par leur limiteur ;
+    # livrer plus faible fait paraitre la video timide dans le fil.
+    graph.append(
+        f"[{audio_out}]loudnorm=I=-14:TP=-1.5:LRA=11,"
+        "alimiter=limit=0.95:level=disabled[aout]"
+    )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     args = [
@@ -186,12 +213,14 @@ def render_short(
     return out_path
 
 
-def plan_clips(clips: list[Path], total: float, *, min_shot: float = 2.2) -> list[Clip]:
+def plan_clips(clips: list[Path], total: float, *, min_shot: float = 3.2) -> list[Clip]:
     """Repartit une liste de fichiers de b-roll sur la duree voulue.
 
     Les plans sont boucles si le stock est insuffisant. `min_shot` borne la
-    duree d'un plan par le bas : sous ~2 s, l'enchainement devient nerveux
-    au point de nuire a la lisibilite des sous-titres.
+    duree d'un plan par le bas. La valeur par defaut est deliberement haute :
+    les chaines narratives a forte audience tiennent 3 a 7 secondes par plan,
+    la coupe toutes les 1,5 s est une signature du format « slideshow » que
+    la politique Inauthentic Content vise directement.
     """
     if not clips:
         return []

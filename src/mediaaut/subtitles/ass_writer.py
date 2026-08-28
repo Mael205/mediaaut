@@ -57,6 +57,13 @@ class SubtitleStyle:
     # largeur du cadre. Une taille fixe donne des lignes courtes minuscules
     # et des lignes longues qui debordent ; l'ajustement par cue est ce qui
     # produit le rendu « plein cadre » attendu en short-form.
+    # Palette parcourue d'une cue a l'autre. Quand elle est definie, c'est
+    # la cue entiere qui prend la couleur et le mot actif ne se distingue
+    # plus que par son agrandissement. C'est le parti pris des chaines
+    # narratives a forte audience : la couleur rythme le recit au lieu de
+    # pointer un mot.
+    cue_palette: tuple[str, ...] = ()
+
     fit_width: float = 0.82
     # Hauteur des capitales visee, en fraction de la hauteur du cadre. Borne
     # les cues d'un ou deux mots courts, que l'ajustement en largeur seul
@@ -73,6 +80,15 @@ PRESETS: dict[str, SubtitleStyle] = {
     "clean": SubtitleStyle(
         font="Poppins ExtraBold", accent="FFFFFF", outline=5.0, uppercase=False,
         accent_scale=100, fit_width=0.76, fit_height=0.062, min_size=64, max_size=190,
+    ),
+    # Legende courte et coloree posee sous l'image, calquee sur la mise en
+    # page mesuree des chaines narratives generalistes : texte nettement
+    # plus petit que le standard « short IA », contour noir marque.
+    "story": SubtitleStyle(
+        font="Poppins ExtraBold", accent_scale=106, uppercase=False,
+        outline=7.0, shadow=0.0,
+        cue_palette=("FFFFFF", "FF3B30", "FFE14D", "34C759", "FFFFFF", "FF2D95", "0A84FF"),
+        fit_width=0.46, fit_height=0.032, min_size=44, max_size=104,
     ),
     # Boite opaque : lisible sur n'importe quel b-roll clair.
     "boxed": SubtitleStyle(
@@ -217,17 +233,29 @@ def build_ass(
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
     ]
 
-    accent = _ass_color(style.accent)
-    primary = _ass_color(style.primary)
     cues = group_words(words, max_chars=max_chars)
     events: list[str] = []
 
     for cue_index, cue in enumerate(cues):
         size = _fit_size(cue.text(style.uppercase), style, width, height)
 
+        if style.cue_palette:
+            # Toute la cue prend la meme couleur ; le mot actif ne se
+            # distingue que par la taille.
+            primary = _ass_color(style.cue_palette[cue_index % len(style.cue_palette)])
+            accent = primary
+        else:
+            primary = _ass_color(style.primary)
+            accent = _ass_color(style.accent)
+
         # La cue tient jusqu'a la suivante tant que le silence reste bref.
         next_start = cues[cue_index + 1].start if cue_index + 1 < len(cues) else None
         cue_end = cue.end if next_start is None else min(next_start, cue.end + hold)
+
+        # La couleur de repos est posee en tete de ligne. Sans cela, les mots
+        # situes avant le mot actif ne portent aucune balise et retombent sur
+        # la couleur du style, ce qui bicolore la cue a chaque image.
+        prefix = "{" + f"\\fs{size}\\c{primary}" + "}"
 
         for index, active in enumerate(cue.words):
             parts = []
@@ -246,9 +274,15 @@ def build_ass(
 
             last = index == len(cue.words) - 1
             end = cue_end if last else cue.words[index + 1].start
+            # Borne l'affichage au debut de la cue suivante : des timings
+            # Whisker qui se chevauchent feraient sinon coexister deux cues
+            # sur la meme ligne, avec deux couleurs.
+            stop = max(end, active.end)
+            if next_start is not None:
+                stop = min(stop, next_start)
             events.append(
-                f"Dialogue: 0,{_ass_time(active.start)},{_ass_time(max(end, active.end))},"
-                f"Main,,0,0,0,,{{\\fs{size}}}{' '.join(parts)}"
+                f"Dialogue: 0,{_ass_time(active.start)},{_ass_time(stop)},"
+                f"Main,,0,0,0,,{prefix}{' '.join(parts)}"
             )
 
     return "\n".join(header + events) + "\n"

@@ -27,6 +27,15 @@ class Template:
     # Couleur du fond visible quand le b-roll n'occupe pas tout le cadre.
     backdrop: str = "0F1117"
     zoom: float = 1.0            # zoom lent de bout en bout (1.0 = aucun)
+    # "crop" recadre la source en 9:16, quitte a perdre les bords ; "blur"
+    # inscrit la source entiere au centre et comble le reste avec la meme
+    # image floutee. Indispensable pour du materiau horizontal, ou le
+    # recadrage couperait l'action.
+    fill_mode: str = "crop"
+    # Duree cible d'un plan. Les chaines narratives qui marchent coupent
+    # bien plus lentement que les shorts IA : la reference mesuree tient
+    # 2,7 s a 7 s par plan la ou le format « slideshow » enchaine a 1,5 s.
+    shot_seconds: float = 3.2
 
 
 TEMPLATES: dict[str, Template] = {
@@ -44,6 +53,13 @@ TEMPLATES: dict[str, Template] = {
     "split_top": Template(
         name="split_top", subtitle_style="clean", subtitle_anchor=0.16,
         max_chars=18, video_fraction=0.62, backdrop="101826", zoom=1.0,
+    ),
+    # Reproduction de la mise en page des chaines narratives a forte
+    # audience : source entiere au centre sur fond flouté, plans longs,
+    # legende courte et coloree posee sous l'image.
+    "story": Template(
+        name="story", subtitle_style="story", subtitle_anchor=0.30,
+        max_chars=22, zoom=1.0, fill_mode="blur", shot_seconds=5.0,
     ),
 }
 

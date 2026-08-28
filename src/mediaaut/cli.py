@@ -70,6 +70,15 @@ def doctor() -> None:
             "" if value else "a renseigner dans .env",
         )
 
+    for platform in ("youtube",):
+        try:
+            from mediaaut.publish.base import get_publisher
+
+            ok, message = get_publisher(platform).check_auth()
+        except Exception as exc:
+            ok, message = False, str(exc)[:70]
+        table.add_row(platform, "[green]ok[/green]" if ok else "[yellow]non[/yellow]", message)
+
     console.print(table)
 
 
@@ -94,26 +103,49 @@ def make(
     script: str = typer.Option(None, "--script", "-s", help="Texte du script"),
     script_file: Path = typer.Option(None, "--script-file", "-f", exists=True),
     template: str = typer.Option(None, "--template", "-t", help="Force un template"),
-    broll: list[Path] = typer.Option(None, "--broll", "-b", help="Fichiers de b-roll"),
+    broll: list[Path] = typer.Option(None, "--broll", "-b", help="Fichiers de b-roll locaux"),
+    broll_query: list[str] = typer.Option(
+        None, "--broll-query", "-q", help="Mots-cles de recherche en banque (repetable)"
+    ),
     music: Path = typer.Option(None, "--music", "-m", exists=True),
     whisper_model: str = typer.Option("small", "--whisper", help="small | medium | large-v3"),
+    title: str = typer.Option(None, "--title", help="Titre pour la publication"),
+    description: str = typer.Option("", "--description"),
+    tag: list[str] = typer.Option(None, "--tag", help="Tag (repetable)"),
 ) -> None:
     """Genere un short a partir d'un script."""
+    from mediaaut.core.config import get_channel
     from mediaaut.pipeline import make_short
+    from mediaaut.publish.base import VideoMeta
 
     if not script and not script_file:
         raise typer.BadParameter("fournir --script ou --script-file")
     text = script or script_file.read_text(encoding="utf-8")
+
+    meta = None
+    if title:
+        meta = VideoMeta(
+            title=title,
+            description=description,
+            tags=list(tag) if tag else [],
+            language=get_channel(channel).language,
+        )
 
     result = make_short(
         channel,
         text,
         template_name=template,
         broll=list(broll) if broll else None,
+        broll_queries=list(broll_query) if broll_query else None,
         music=music,
         whisper_model=whisper_model,
+        meta=meta,
     )
     console.print(f"\n[bold green]{result.video_path}[/bold green]")
+    if meta is None:
+        console.print(
+            "[dim]Sans --title, la video ne peut pas etre publiee telle quelle.[/dim]"
+        )
 
 
 @app.command()
@@ -134,6 +166,90 @@ def channels() -> None:
             "oui" if channel.enabled else "non",
         )
     console.print(table)
+
+
+@app.command()
+def auth(
+    platform: str = typer.Argument("youtube", help="Plateforme a autoriser"),
+) -> None:
+    """Lance le consentement OAuth d'une plateforme.
+
+    Ouvre le navigateur, puis stocke le jeton dans `secrets/`. A refaire
+    uniquement si le jeton est revoque.
+    """
+    if platform != "youtube":
+        raise typer.BadParameter(f"pas encore implemente : {platform}")
+
+    from mediaaut.publish.youtube import YouTubePublisher
+
+    try:
+        ok, message = YouTubePublisher().authorize()
+    except RuntimeError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+    console.print(("[green]" if ok else "[yellow]") + message + "[/]")
+
+
+@app.command()
+def publish(
+    job: str = typer.Argument(..., help="Identifiant de job, ou chemin d'un .mp4"),
+    platform: list[str] = typer.Option(["youtube"], "--platform", "-p"),
+    title: str = typer.Option(None, "--title", help="Remplace le titre de meta.json"),
+    private: bool = typer.Option(False, "--private", help="Publier en prive"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Verifier sans televerser"),
+) -> None:
+    """Publie une video deja rendue."""
+    import json as _json
+    from datetime import UTC, datetime, timedelta
+
+    from mediaaut.core.paths import OUT
+    from mediaaut.publish.base import VideoMeta, get_publisher
+
+    source = Path(job)
+    if source.suffix == ".mp4" and source.exists():
+        video, meta_path = source, source.parent / "meta.json"
+    else:
+        video, meta_path = OUT / job / "short.mp4", OUT / job / "meta.json"
+
+    if not video.exists():
+        console.print(f"[red]video introuvable : {video}[/red]")
+        raise typer.Exit(1)
+
+    if meta_path.exists():
+        raw = _json.loads(meta_path.read_text(encoding="utf-8"))
+        raw.pop("publish_at", None)
+        meta = VideoMeta(**raw)
+    elif title:
+        meta = VideoMeta(title=title)
+    else:
+        console.print(f"[red]ni {meta_path} ni --title : impossible de publier[/red]")
+        raise typer.Exit(1)
+
+    if title:
+        meta.title = title
+    if private:
+        # Un `publishAt` lointain force la visibilite privee sans avoir a
+        # exposer un champ de visibilite distinct dans l'interface.
+        meta.publish_at = datetime.now(UTC) + timedelta(days=3650)
+
+    for name in platform:
+        publisher = get_publisher(name)
+        ok, message = publisher.check_auth()
+        console.print(f"[bold]{name}[/bold] : {'[green]' if ok else '[red]'}{message}[/]")
+        if not ok:
+            continue
+        if dry_run:
+            console.print(f"  [dim]dry-run, rien televerse ({video.name}, "
+                          f"titre « {meta.title} »)[/dim]")
+            continue
+
+        result = publisher.publish(video, meta)
+        if result.ok:
+            console.print(f"  [green]{result.url}[/green]  visibilite={result.visibility}")
+            if result.detail:
+                console.print(f"  [yellow]{result.detail}[/yellow]")
+        else:
+            console.print(f"  [red]echec : {result.detail}[/red]")
 
 
 if __name__ == "__main__":

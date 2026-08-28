@@ -17,6 +17,7 @@ from mediaaut.assets.fonts import ensure_fonts
 from mediaaut.core.config import ChannelConfig, get_channel
 from mediaaut.core.logging import get_logger, step
 from mediaaut.core.paths import job_dir
+from mediaaut.publish.base import VideoMeta
 from mediaaut.render.compose import Clip, plan_clips, render_short
 from mediaaut.render.templates import Template, get_template, pick_template
 from mediaaut.subtitles.ass_writer import write_ass
@@ -53,8 +54,10 @@ def make_short(
     job_id: str | None = None,
     template_name: str | None = None,
     broll: list[Path] | None = None,
+    broll_queries: list[str] | None = None,
     music: Path | None = None,
     whisper_model: str = "small",
+    meta: VideoMeta | None = None,
 ) -> ShortResult:
     """Produit un short vertical a partir d'un script deja ecrit."""
     script = " ".join(script.split())
@@ -99,9 +102,22 @@ def make_short(
     )
     timings["subtitles"] = time.perf_counter() - start
 
-    # 3. Rendu ------------------------------------------------------------
+    # 3. B-roll ------------------------------------------------------------
+    if not broll and broll_queries:
+        from mediaaut.assets.broll import find_broll
+
+        # Un plan par tranche de `shot_seconds`, plus un de marge : mieux
+        # vaut un plan inutilise qu'un plan reboucle deux fois de suite.
+        wanted = int(voice.duration // template.shot_seconds) + 1
+        broll = find_broll(broll_queries, count=max(2, wanted))
+
+    # 4. Rendu ------------------------------------------------------------
     start = time.perf_counter()
-    clips: list[Clip] = plan_clips(broll, voice.duration) if broll else []
+    clips: list[Clip] = (
+        plan_clips(broll, voice.duration, min_shot=template.shot_seconds)
+        if broll
+        else []
+    )
     render_short(
         out_path=job / "short.mp4",
         voice_path=voice.path,
@@ -116,6 +132,11 @@ def make_short(
     timings["render"] = time.perf_counter() - start
 
     (job / "script.txt").write_text(script, encoding="utf-8")
+    if meta is not None:
+        (job / "meta.json").write_text(
+            json.dumps(asdict(meta), indent=2, ensure_ascii=False, default=str),
+            encoding="utf-8",
+        )
     result = ShortResult(
         job_id=job_id,
         channel_id=channel_id,

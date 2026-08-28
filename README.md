@@ -8,7 +8,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 | Phase | Contenu | Etat |
 |-------|---------|------|
 | 1 | Socle + rendu d'un short de bout en bout | **fait** |
-| 2 | Publication YouTube (OAuth + upload) | a faire |
+| 2 | Publication YouTube + b-roll de banque | **fait** |
 | 3 | Publication Instagram + TikTok | a faire |
 | 4 | Pipeline de decoupage (video longue -> shorts) | a faire |
 | 5 | Ecriture des scripts par LLM + file d'idees | a faire |
@@ -44,8 +44,16 @@ Puis verifier :
 # generer un short depuis un script
 .venv\Scripts\mediaaut make ai-builders-en --script-file script.txt
 
-# forcer un template et fournir du b-roll
+# forcer un template et fournir du b-roll local
 .venv\Scripts\mediaaut make ai-builders-en -f script.txt -t split_top -b clip1.mp4 -b clip2.mp4
+
+# b-roll cherche automatiquement en banque (necessite PEXELS_API_KEY)
+.venv\Scripts\mediaaut make ai-builders-en -f script.txt -q "developer coding" -q "server room"     --title "Automate the right half" --tag ai --tag automation
+
+# autoriser YouTube une fois, puis publier
+.venv\Scripts\mediaaut auth youtube
+.venv\Scripts\mediaaut publish ai-builders-en-20260828-150709 --dry-run
+.venv\Scripts\mediaaut publish ai-builders-en-20260828-150709
 ```
 
 Chaque job ecrit dans `data/out/<job-id>/` : `voice.wav`, `subs.ass`, `script.txt`,
@@ -95,6 +103,16 @@ session interactive. `core/ffmpeg.py` localise le binaire lui-meme.
 CTranslate2 charge cuBLAS depuis du code natif, qui utilise l'ordre de
 recherche Windows standard. `core/gpu.py` fait les deux, avant tout import de
 `faster_whisper`.
+
+**Loudness normalise a -14 LUFS.** YouTube, Instagram et TikTok ramenent tous
+la lecture autour de cette valeur. Livrer plus fort ne rend pas plus fort : cela
+fait seulement travailler leur limiteur sur le mix. Livrer plus faible fait
+paraitre la video timide dans le fil.
+
+**Visibilite relue apres upload.** La reponse de `videos.insert` reflete ce qui a
+ete demande, pas ce que YouTube a applique. Sur un projet API non audite, l'ecart
+entre les deux est exactement l'information utile, donc `publish/youtube.py`
+relit l'etat reel et le remonte au lieu d'annoncer un succes trompeur.
 
 ## Politique de contenu
 

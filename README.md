@@ -50,8 +50,8 @@ Puis verifier :
 # b-roll cherche automatiquement en banque (necessite PEXELS_API_KEY)
 .venv\Scripts\mediaaut make ai-builders-en -f script.txt -q "developer coding" -q "server room" --title "Automate the right half" --tag ai --tag automation
 
-# autoriser YouTube une fois, puis publier
-.venv\Scripts\mediaaut auth youtube
+# autoriser YouTube (une fois par chaine), puis publier
+.venv\Scripts\mediaaut auth youtube --channel ai-builders-en
 .venv\Scripts\mediaaut publish ai-builders-en-20260828-150709 --dry-run
 .venv\Scripts\mediaaut publish ai-builders-en-20260828-150709
 ```
@@ -113,6 +113,12 @@ paraitre la video timide dans le fil.
 ete demande, pas ce que YouTube a applique. Sur un projet API non audite, l'ecart
 entre les deux est exactement l'information utile, donc `publish/youtube.py`
 relit l'etat reel et le remonte au lieu d'annoncer un succes trompeur.
+
+**Un jeton OAuth par chaine.** Le projet Google Cloud, le client OAuth et
+l'audit de conformite sont au niveau du projet : un seul suffit pour toutes les
+chaines. Ce qui differe est le consentement, qui designe la chaine YouTube
+ciblee. `secrets/youtube_token-<chaine>.json` les separe, faute de quoi
+autoriser une deuxieme chaine ecraserait silencieusement la premiere.
 
 ## Politique de contenu
 

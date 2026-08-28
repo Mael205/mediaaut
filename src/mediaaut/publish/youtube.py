@@ -37,7 +37,13 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.upload",
     "https://www.googleapis.com/auth/youtube.readonly",
 ]
-TOKEN_PATH = SECRETS / "youtube_token.json"
+# Un jeton par chaine. Le client OAuth et l'audit sont au niveau du projet
+# Google Cloud, donc communs a toutes les chaines ; ce qui differe est le
+# consentement, qui designe la chaine ciblee. Sans separation, autoriser une
+# deuxieme chaine ecraserait silencieusement la premiere.
+def token_path(channel_id: str | None = None) -> Path:
+    suffix = f"-{channel_id}" if channel_id else ""
+    return SECRETS / f"youtube_token{suffix}.json"
 
 TITLE_LIMIT = 100
 DESCRIPTION_LIMIT = 5000
@@ -51,6 +57,12 @@ _MAX_ATTEMPTS = 5
 
 class YouTubePublisher:
     name = "youtube"
+
+    def __init__(self, channel_id: str | None = None) -> None:
+        """`channel_id` designe une chaine de `channels.yaml`, pas une chaine
+        YouTube : il sert a ranger le jeton correspondant."""
+        self.channel_id = channel_id
+        self.token_path = token_path(channel_id)
 
     # -- authentification ------------------------------------------------
     def _client_secrets(self) -> Path:
@@ -66,8 +78,8 @@ class YouTubePublisher:
         from google_auth_oauthlib.flow import InstalledAppFlow
 
         creds = None
-        if TOKEN_PATH.exists():
-            creds = Credentials.from_authorized_user_file(str(TOKEN_PATH), SCOPES)
+        if self.token_path.exists():
+            creds = Credentials.from_authorized_user_file(str(self.token_path), SCOPES)
 
         if creds and creds.valid:
             return creds
@@ -81,7 +93,10 @@ class YouTubePublisher:
                 log.warning("rafraichissement du jeton echoue (%s), reconsentement", exc)
 
         if not interactive:
-            raise RuntimeError("jeton YouTube absent ou expire ; lancer `mediaaut auth youtube`")
+            hint = f" --channel {self.channel_id}" if self.channel_id else ""
+            raise RuntimeError(
+                f"jeton YouTube absent ou expire ; lancer `mediaaut auth youtube{hint}`"
+            )
 
         secrets_path = self._client_secrets()
         if not secrets_path.exists():
@@ -99,8 +114,8 @@ class YouTubePublisher:
 
     def _save(self, creds) -> None:
         SECRETS.mkdir(parents=True, exist_ok=True)
-        TOKEN_PATH.write_text(creds.to_json(), encoding="utf-8")
-        log.info("jeton YouTube enregistre dans %s", TOKEN_PATH)
+        self.token_path.write_text(creds.to_json(), encoding="utf-8")
+        log.info("jeton YouTube enregistre dans %s", self.token_path)
 
     def _service(self, *, interactive: bool = True):
         from googleapiclient.discovery import build
@@ -123,8 +138,9 @@ class YouTubePublisher:
     def check_auth(self) -> tuple[bool, str]:
         if not self._client_secrets().exists():
             return False, f"client OAuth manquant : {self._client_secrets()}"
-        if not TOKEN_PATH.exists():
-            return False, "pas encore autorise ; lancer `mediaaut auth youtube`"
+        if not self.token_path.exists():
+            hint = f" --channel {self.channel_id}" if self.channel_id else ""
+            return False, f"pas encore autorise ; lancer `mediaaut auth youtube{hint}`"
         try:
             service = self._service(interactive=False)
             items = service.channels().list(part="snippet", mine=True).execute().get("items", [])

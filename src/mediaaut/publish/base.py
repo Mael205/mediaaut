@@ -59,7 +59,7 @@ class Publisher(Protocol):
         ...
 
 
-def get_publisher(name: str) -> Publisher:
+def get_publisher(name: str, channel_id: str | None = None) -> Publisher:
     """Instancie un publieur par nom, en important a la demande.
 
     Chaque plateforme traine ses propres dependances lourdes ; on ne veut
@@ -68,7 +68,7 @@ def get_publisher(name: str) -> Publisher:
     if name == "youtube":
         from mediaaut.publish.youtube import YouTubePublisher
 
-        return YouTubePublisher()
+        return YouTubePublisher(channel_id)
     raise ValueError(f"plateforme inconnue ou pas encore implementee : {name}")
 
 

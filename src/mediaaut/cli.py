@@ -171,11 +171,18 @@ def channels() -> None:
 @app.command()
 def auth(
     platform: str = typer.Argument("youtube", help="Plateforme a autoriser"),
+    channel: str = typer.Option(
+        None, "--channel", "-c", help="Chaine de channels.yaml a rattacher a ce jeton"
+    ),
 ) -> None:
     """Lance le consentement OAuth d'une plateforme.
 
     Ouvre le navigateur, puis stocke le jeton dans `secrets/`. A refaire
-    uniquement si le jeton est revoque.
+    uniquement si le jeton est revoque, ou pour rattacher une chaine de plus.
+
+    Si le compte Google possede plusieurs chaines YouTube, l'ecran de
+    consentement en propose la liste : choisir celle qui correspond a
+    `--channel`. Le message final confirme laquelle a ete rattachee.
     """
     if platform != "youtube":
         raise typer.BadParameter(f"pas encore implemente : {platform}")
@@ -183,11 +190,13 @@ def auth(
     from mediaaut.publish.youtube import YouTubePublisher
 
     try:
-        ok, message = YouTubePublisher().authorize()
+        ok, message = YouTubePublisher(channel).authorize()
     except RuntimeError as exc:
         console.print(f"[red]{exc}[/red]")
         raise typer.Exit(1) from exc
     console.print(("[green]" if ok else "[yellow]") + message + "[/]")
+    if ok and channel:
+        console.print(f"[dim]jeton rattache a la chaine mediaaut « {channel} »[/dim]")
 
 
 @app.command()
@@ -206,10 +215,19 @@ def publish(
     from mediaaut.publish.base import VideoMeta, get_publisher
 
     source = Path(job)
-    if source.suffix == ".mp4" and source.exists():
-        video, meta_path = source, source.parent / "meta.json"
-    else:
-        video, meta_path = OUT / job / "short.mp4", OUT / job / "meta.json"
+    direct_file = source.suffix == ".mp4" and source.exists()
+    job_root = source.parent if direct_file else OUT / job
+    video = source if direct_file else job_root / "short.mp4"
+    meta_path = job_root / "meta.json"
+
+    # Le jeton a utiliser depend de la chaine du job, pas de la plateforme :
+    # chaque chaine YouTube a son propre consentement.
+    result_path = job_root / "result.json"
+    channel_id = (
+        _json.loads(result_path.read_text(encoding="utf-8")).get("channel_id")
+        if result_path.exists()
+        else None
+    )
 
     if not video.exists():
         console.print(f"[red]video introuvable : {video}[/red]")
@@ -233,7 +251,7 @@ def publish(
         meta.publish_at = datetime.now(UTC) + timedelta(days=3650)
 
     for name in platform:
-        publisher = get_publisher(name)
+        publisher = get_publisher(name, channel_id)
         ok, message = publisher.check_auth()
         console.print(f"[bold]{name}[/bold] : {'[green]' if ok else '[red]'}{message}[/]")
         if not ok:

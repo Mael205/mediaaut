@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mediaaut — file de mise en ligne</title>
+<style>
+  :root {
+    --bg:#0f1319; --panel:#161c25; --line:#232a35; --fg:#e6e9ef; --muted:#98a2b3;
+    --accent:#6ea8ff; --ok:#3ddc84; --warn:#ffc857; --radius:10px;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg:#f6f7f9; --panel:#ffffff; --line:#e2e6ec; --fg:#14171f; --muted:#5a6472;
+      --accent:#1a56b8; --ok:#137a41; --warn:#8a5a00;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--bg);
+    border-bottom:1px solid var(--line);padding:18px 24px}
+  h1{margin:0;font-size:1.15rem;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:.88rem;margin-top:3px}
+  main{max-width:1000px;margin:0 auto;padding:24px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-bottom:16px;display:grid;grid-template-columns:180px 1fr;gap:20px}
+  @media (max-width:720px){.card{grid-template-columns:1fr}}
+  video{width:100%;border-radius:8px;background:#000;display:block}
+  .meta{min-width:0}
+  .row{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px}
+  .row .label{color:var(--muted);font-size:.75rem;text-transform:uppercase;
+    letter-spacing:.05em;width:74px;flex:none;padding-top:6px}
+  .val{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);
+    border-radius:6px;padding:7px 10px;font-size:.92rem;white-space:pre-wrap;
+    word-break:break-word;max-height:150px;overflow:auto}
+  button{font:inherit;font-size:.85rem;padding:7px 12px;border-radius:6px;
+    border:1px solid var(--line);background:var(--bg);color:var(--fg);cursor:pointer}
+  button:hover{border-color:var(--accent)}
+  button.copy{flex:none;min-width:78px}
+  button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.done{background:var(--ok);border-color:var(--ok);color:#fff;font-weight:600}
+  .actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;
+    padding-top:14px;border-top:1px solid var(--line)}
+  .badges{display:flex;gap:8px;flex-wrap:wrap;color:var(--muted);
+    font-size:.8rem;margin-bottom:10px}
+  .badge{background:var(--bg);border:1px solid var(--line);
+    border-radius:20px;padding:2px 10px}
+  .empty{text-align:center;color:var(--muted);padding:80px 20px}
+  .empty strong{display:block;color:var(--fg);font-size:1.1rem;margin-bottom:8px}
+  .steps{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--warn);
+    border-radius:var(--radius);padding:14px 18px;margin-bottom:22px;font-size:.9rem}
+  .steps ol{margin:8px 0 0;padding-left:20px}
+  .steps li{margin:4px 0;color:var(--muted)}
+  .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);
+    background:var(--ok);color:#fff;padding:10px 20px;border-radius:20px;font-size:.88rem;
+    font-weight:600;transition:transform .22s;pointer-events:none}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>File de mise en ligne</h1>
+  <div class="sub" id="count">chargement…</div>
+</header>
+
+<main>
+  <div class="steps">
+    Tant que l'audit de l'API n'est pas accordé, une vidéo envoyée par API reste
+    <strong>définitivement privée</strong>. La mise en ligne passe donc par le site.
+    <ol>
+      <li><strong>Ouvrir YouTube</strong> — l'onglet d'envoi s'ouvre</li>
+      <li><strong>Ouvrir le dossier</strong> — glisser le <code>.mp4</code> dans YouTube</li>
+      <li>Coller le titre puis la description (boutons <em>Copier</em>)</li>
+      <li>Publier, ou programmer une date</li>
+      <li><strong>Marquer comme fait</strong> — la vidéo sort de la file</li>
+    </ol>
+  </div>
+
+  <div id="list"></div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const listEl = document.getElementById('list');
+const countEl = document.getElementById('count');
+const toastEl = document.getElementById('toast');
+
+function toast(message) {
+  toastEl.textContent = message;
+  toastEl.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toastEl.classList.remove('show'), 1600);
+}
+
+async function copy(text, what) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(what + ' copié');
+  } catch {
+    // Le presse-papiers peut être refusé si l'onglet n'a pas le focus.
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    toast(what + ' copié');
+  }
+}
+
+function escapeHtml(value) {
+  const div = document.createElement('div');
+  div.textContent = value;
+  return div.innerHTML;
+}
+
+function card(job) {
+  const fullDescription = job.description + (job.hashtags ? '\n\n' + job.hashtags : '');
+  const node = document.createElement('div');
+  node.className = 'card';
+  node.innerHTML = `
+    <video src="/media/${encodeURIComponent(job.job_id)}#t=0.6"
+             controls preload="metadata" playsinline></video>
+    <div class="meta">
+      <div class="badges">
+        <span class="badge">${job.duration}s</span>
+        <span class="badge">${job.size_mb} Mo</span>
+        <span class="badge">${escapeHtml(job.template)}</span>
+        <span class="badge">${escapeHtml(job.channel_id)}</span>
+      </div>
+      <div class="row">
+        <span class="label">Titre</span>
+        <div class="val">${escapeHtml(job.title)}</div>
+        <button class="copy" data-copy="title">Copier</button>
+      </div>
+      <div class="row">
+        <span class="label">Descr.</span>
+        <div class="val">${escapeHtml(fullDescription)}</div>
+        <button class="copy" data-copy="description">Copier</button>
+      </div>
+      <div class="actions">
+        <button data-act="youtube" class="primary">Ouvrir YouTube</button>
+        <button data-act="reveal">Ouvrir le dossier</button>
+        <button data-act="mark" class="done">Marquer comme fait</button>
+      </div>
+    </div>`;
+
+  node.querySelector('[data-copy="title"]')
+      .onclick = () => copy(job.title, 'Titre');
+  node.querySelector('[data-copy="description"]')
+      .onclick = () => copy(fullDescription, 'Description');
+  node.querySelector('[data-act="youtube"]')
+      .onclick = () => window.open('https://www.youtube.com/upload', '_blank');
+  node.querySelector('[data-act="reveal"]').onclick = async () => {
+    await fetch('/api/reveal?job=' + encodeURIComponent(job.job_id), {method: 'POST'});
+    toast('Dossier ouvert');
+  };
+  node.querySelector('[data-act="mark"]').onclick = async () => {
+    await fetch('/api/mark?job=' + encodeURIComponent(job.job_id), {method: 'POST'});
+    toast('Sortie de la file');
+    load();
+  };
+  return node;
+}
+
+async function load() {
+  const response = await fetch('/api/pending');
+  const {jobs} = await response.json();
+
+  countEl.textContent = jobs.length
+    ? `${jobs.length} vidéo${jobs.length > 1 ? 's' : ''} en attente — les plus anciennes d'abord`
+    : 'aucune vidéo en attente';
+
+  listEl.innerHTML = '';
+  if (!jobs.length) {
+    listEl.innerHTML = `<div class="empty">
+      <strong>File vide</strong>
+      Produire un lot : <code>mediaaut batch &lt;chaîne&gt; -n 7</code>
+    </div>`;
+    return;
+  }
+  jobs.forEach(job => listEl.appendChild(card(job)));
+}
+
+load();
+</script>
+</body>
+</html>

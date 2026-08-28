@@ -387,5 +387,94 @@ def auto(
         publish(result.job_id, platform=["youtube"], title=None, private=private, dry_run=False)
 
 
+@app.command()
+def batch(
+    channel: str = typer.Argument(..., help="Identifiant de chaine"),
+    count: int = typer.Option(7, "--count", "-n", help="Nombre de videos a produire"),
+    seconds: float = typer.Option(38.0, "--seconds"),
+    whisper_model: str = typer.Option("small", "--whisper"),
+) -> None:
+    """Produit plusieurs videos d'affilee, sans rien publier.
+
+    Tant que la mise en ligne YouTube reste manuelle, produire par lots est
+    ce qui change le rythme reel : une seance hebdomadaire de quelques
+    minutes remplace un geste quotidien.
+
+    Un echec sur une video n'interrompt pas le lot — le sujet reste dans la
+    file et sera repris au prochain passage.
+    """
+    from mediaaut.core.config import get_channel
+    from mediaaut.ideas.store import counts, mark_used, next_idea
+    from mediaaut.pipeline import make_short
+    from mediaaut.publish.base import VideoMeta
+    from mediaaut.script.models import IdeaDraft
+    from mediaaut.script.writer import write_script
+
+    channel_config = get_channel(channel)
+    produced: list[str] = []
+
+    for index in range(count):
+        idea = next_idea(channel)
+        if idea is None:
+            console.print(
+                f"[yellow]file d'idees epuisee apres {len(produced)} video(s)[/yellow] — "
+                f"lancer `mediaaut ideas generate {channel}`"
+            )
+            break
+
+        step(f"video {index + 1}/{count}", titre=idea.title)
+        try:
+            draft = write_script(
+                channel_config,
+                IdeaDraft(title=idea.title, angle=idea.angle, hook=idea.hook),
+                seconds=seconds,
+            )
+            result = make_short(
+                channel,
+                draft.narration,
+                broll_queries=draft.broll_queries,
+                whisper_model=whisper_model,
+                meta=VideoMeta(
+                    title=draft.title,
+                    description=draft.description,
+                    tags=draft.tags,
+                    language=channel_config.language,
+                ),
+            )
+        except Exception as exc:
+            # L'idee n'est pas marquee utilisee : elle repassera au prochain lot.
+            log.exception("echec sur « %s »", idea.title)
+            console.print(f"  [red]echec : {exc}[/red] — sujet remis dans la file")
+            continue
+
+        mark_used(idea.id, result.job_id)
+        produced.append(result.job_id)
+
+    console.print(
+        f"\n[bold green]{len(produced)} video(s) produite(s)[/bold green]"
+        f"  [dim]file : {counts(channel)}[/dim]"
+    )
+    if produced:
+        console.print("[dim]Mettre en ligne : `mediaaut studio`[/dim]")
+
+
+@app.command()
+def studio(
+    channel: str = typer.Option(None, "--channel", "-c", help="Limiter a une chaine"),
+    port: int = typer.Option(8765, "--port"),
+    no_browser: bool = typer.Option(False, "--no-browser"),
+) -> None:
+    """Ouvre la console locale de mise en ligne.
+
+    Affiche les videos pretes et pas encore publiees, avec leurs
+    metadonnees a un clic du presse-papiers. Le televersement reste fait a
+    la main sur youtube.com : tant que l'audit de l'API n'est pas accorde,
+    c'est la seule voie qui produit une video publique.
+    """
+    from mediaaut.studio.server import serve
+
+    serve(port=port, channel_id=channel, open_browser=not no_browser)
+
+
 if __name__ == "__main__":
     app()

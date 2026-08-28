@@ -15,6 +15,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 | 4 | Pipeline de decoupage (video longue -> shorts) | a faire |
 | 5 | Ecriture des scripts par LLM + file d'idees | **fait** |
 | 6 | Scheduler + rotation des templates | a faire |
+| -- | Console locale de mise en ligne assistee | **fait** |
 | 7 | Doublage FR | a faire |
 | 8 | Video generative locale (LTX / Wan) | a faire |
 
@@ -52,6 +53,12 @@ Puis verifier :
 # b-roll cherche automatiquement en banque (necessite PEXELS_API_KEY)
 .venv\Scripts\mediaaut make ai-builders-en -f script.txt -q "developer coding" -q "server room" --title "Automate the right half" --tag ai --tag automation
 
+# produire une semaine de videos d'un coup
+.venv\Scripts\mediaaut batch ai-builders-en -n 7
+
+# console locale : file de mise en ligne, metadonnees a un clic
+.venv\Scripts\mediaaut studio
+
 # autoriser YouTube (une fois par chaine), puis publier
 .venv\Scripts\mediaaut auth youtube --channel ai-builders-en
 .venv\Scripts\mediaaut publish ai-builders-en-20260828-150709 --dry-run
@@ -75,6 +82,7 @@ src/mediaaut/
   clip/        (phase 4) decoupage de video longue
   script/      ecriture des idees et des scripts par Claude
   ideas/       file d'idees par chaine, avec garde anti-repetition
+  studio/      console locale de mise en ligne, tant que l'audit n'est pas accorde
   pipeline.py  orchestration
   cli.py       point d'entree unique, y compris pour les taches planifiees
 ```
@@ -133,6 +141,13 @@ actuel sont figes dans `tests/test_ideas.py`.
 **Debit de narration cale sur la mesure.** 215 mots par minute, moyenne relevee
 sur deux shorts narratifs a tres forte audience (214 et 228). Un script ecrit
 sans budget de mots produit une video deux fois trop longue pour sa duree visee.
+
+**Mise en ligne manuelle assistee, pas contournee.** Tant que l'audit n'est pas
+accorde, `videos.insert` verrouille toute video en prive definitivement, sans
+recours. La console `mediaaut studio` ne contourne pas cette regle : elle reduit
+le geste manuel a son minimum et enregistre l'etat. Le televersement reste fait
+par un humain sur youtube.com, parce que piloter le site par navigateur viole
+les CGU de YouTube et expose la chaine — l'actif meme qu'on construit.
 
 ## Politique de contenu
 

@@ -1,5 +1,7 @@
 # mediaaut
 
+<https://mael205.github.io/mediaaut/>
+
 Pipeline automatise de creation et de publication de videos courtes et longues.
 Tout tourne en local, sans service payant sur le chemin critique.
 

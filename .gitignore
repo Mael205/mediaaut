@@ -12,3 +12,4 @@ secrets/
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
+data/*.log

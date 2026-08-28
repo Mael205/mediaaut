@@ -69,10 +69,23 @@ def build_clips(
         for _ in range(shots):
             source = broll[broll_index % len(broll)]
             broll_index += 1
-            clips.append(Clip(path=source, duration=per_shot, start=0.5))
+            # Les photographies sont des plans fixes anime par un zoom lent ;
+            # les extraits video gardent leur propre mouvement.
+            is_photo = source.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+            clips.append(
+                Clip(
+                    path=source, duration=per_shot,
+                    start=0.0 if is_photo else 0.5,
+                    still=is_photo,
+                    zoom=1.12 if is_photo else 0.0,
+                )
+            )
 
+    # `still` couvre desormais les photos autant que les cartes : compter
+    # les cartes par ce champ les confondait, et le journal annoncait six
+    # cartes la ou il n'y en avait aucune.
     log.info(
-        "montage : %d plan(s) dont %d carte(s)",
-        len(clips), sum(1 for c in clips if c.still),
+        "montage : %d plan(s), dont %d carte(s) et %d photo(s)",
+        len(clips), card_index, sum(1 for c in clips if c.still) - card_index,
     )
     return clips

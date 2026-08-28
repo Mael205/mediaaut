@@ -31,6 +31,9 @@ class Clip:
     duration: float
     start: float = 0.0     # point d'entree dans le fichier source
     still: bool = False
+    # Zoom propre au plan. Une carte de code bouge a peine — elle se lit ;
+    # une photo fixe sans mouvement parait figee au milieu d'une video.
+    zoom: float = 0.0      # 0 = utiliser celui du template
 
 
 def escape_path(path: Path) -> str:
@@ -132,11 +135,13 @@ def render_short(
                     "-i", str(clip.path),
                 ]
             if clip.still:
-                # Une carte est deja composee au format cible : la recadrer
-                # ou la flouter n'aurait aucun sens. Un zoom tres lent suffit
-                # a lui donner vie sans la rendre illisible.
+                # Une image fixe est recadree, jamais floutee : le fond
+                # floute n'a de sens que pour du materiau video horizontal.
                 graph.append(
-                    _crop_chain(index, clip, width, video_height, fps, zoom=1.04)
+                    _crop_chain(
+                        index, clip, width, video_height, fps,
+                        zoom=clip.zoom or 1.04,
+                    )
                 )
             elif template.fill_mode == "blur":
                 graph.append(_blur_fill_chain(index, width, video_height, fps))

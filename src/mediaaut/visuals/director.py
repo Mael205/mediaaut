@@ -51,6 +51,23 @@ _PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("field", re.compile(r"\b([a-z]+(?:[A-Z][a-z0-9]+){1,})\b")),
 ]
 
+# Entites techniques nommees : elles ne ressemblent pas a du code, mais une
+# carte les illustre bien mieux qu'une photo de banque. Sans elles, un script
+# entierement conceptuel — « la memoire GPU limite la taille de lot » — ne
+# declenchait aucune carte et retombait sur du b-roll hors sujet.
+_ENTITIES = {
+    "pytorch": ("import torch", "torch.cuda.memory_allocated()"),
+    "tensorflow": ("import tensorflow as tf", "tf.config.list_physical_devices()"),
+    "cuda": ("$ nvidia-smi", "  memory: 11264MiB / 12282MiB"),
+    "docker": ("$ docker run --gpus all", "  container started"),
+    "kubernetes": ("$ kubectl get pods", "  3 running, 1 pending"),
+    "ffmpeg": ("$ ffmpeg -i in.mp4 out.mp4", "  frame= 1024 fps=240"),
+    "whisper": ("$ whisper audio.wav", "  detected language: en"),
+    "git": ("$ git push origin main", "  main -> main"),
+    "npm": ("$ npm install", "  added 214 packages"),
+    "sql": ("SELECT * FROM users", "  1204 rows"),
+}
+
 # Mots qui ressemblent a du code sans en etre. Sans cette liste, « YouTube »
 # et « TikTok » sont pris pour des noms de champ par le motif camelCase.
 _NOT_CODE = frozenset(
@@ -65,6 +82,12 @@ def find_artifacts(text: str) -> list[tuple[str, str]]:
     """Artefacts techniques nommes dans un texte, dans l'ordre d'apparition."""
     found: list[tuple[str, str]] = []
     seen: set[str] = set()
+
+    lowered = text.lower()
+    for entity in _ENTITIES:
+        if re.search(r"\b" + re.escape(entity) + r"\b", lowered):
+            found.append(("entity", entity))
+            seen.add(entity)
 
     for kind, pattern in _PATTERNS:
         for match in pattern.finditer(text):
@@ -100,6 +123,9 @@ def _card_for(kind: str, token: str) -> tuple[list[str], str, str]:
             "request",
             path,
         )
+    if kind == "entity":
+        lines = list(_ENTITIES[token])
+        return (lines, token, lines[0].split()[-1] if len(lines[0].split()) > 1 else token)
     if kind == "flag":
         return (
             [f"$ mediaaut publish {token}", "  rien televerse"],

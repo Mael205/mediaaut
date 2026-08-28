@@ -109,12 +109,23 @@ def make_short(
 
     # 3. B-roll ------------------------------------------------------------
     if not broll and broll_queries:
-        from mediaaut.assets.broll import find_broll
+        from mediaaut.assets.photos import find_photos
 
         # Un plan par tranche de `shot_seconds`, plus un de marge : mieux
         # vaut un plan inutilise qu'un plan reboucle deux fois de suite.
         wanted = int(voice.duration // template.shot_seconds) + 1
-        broll = find_broll(broll_queries, count=max(2, wanted))
+        # Le vocabulaire curate de la chaine passe en tete. Pexels ne rend
+        # jamais « aucun resultat » : sur une requete sans correspondance il
+        # sert du contenu vaguement apparente, ce qui a donne des maillots de
+        # bain sur un script traitant de memoire GPU. Les requetes du modele
+        # ne viennent donc qu'en complement d'une base sure.
+        queries = [*channel.broll_vocabulary[:3], *broll_queries]
+        # Photos plutot que videos : sur « server room racks », la
+        # recherche video de Pexels rend des gens faisant l'inventaire,
+        # la recherche photo rend des baies de serveurs. Le fonds video
+        # est petit et mal indexe, et depourvu de metadonnees, donc
+        # impossible a filtrer.
+        broll = find_photos(queries, count=max(3, wanted))
 
     # 4. Rendu ------------------------------------------------------------
     start = time.perf_counter()

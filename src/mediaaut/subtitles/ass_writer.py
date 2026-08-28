@@ -28,6 +28,12 @@ def _ass_color(hex_rgb: str, alpha: int = 0) -> str:
     return f"&H{alpha:02X}{b:02X}{g:02X}{r:02X}"
 
 
+# Duree en dessous de laquelle un evenement n'est pas emis. Voir le
+# commentaire dans `build_ass` : un signe isole recoit une fenetre nulle et
+# produit un doublon empile.
+_MIN_EVENT = 0.06
+
+
 def _ass_time(seconds: float) -> str:
     seconds = max(0.0, seconds)
     hours, rem = divmod(seconds, 3600)
@@ -275,11 +281,19 @@ def build_ass(
             last = index == len(cue.words) - 1
             end = cue_end if last else cue.words[index + 1].start
             # Borne l'affichage au debut de la cue suivante : des timings
-            # Whisker qui se chevauchent feraient sinon coexister deux cues
+            # Whisper qui se chevauchent feraient sinon coexister deux cues
             # sur la meme ligne, avec deux couleurs.
             stop = max(end, active.end)
             if next_start is not None:
                 stop = min(stop, next_start)
+
+            # Un signe isole — un tiret cadratin, une ponctuation detachee —
+            # recoit de Whisper une duree quasi nulle et partage sa fenetre
+            # avec le mot suivant. Emettre les deux fait afficher la meme
+            # ligne deux fois, empilee, par-dessus elle-meme.
+            if stop - active.start < _MIN_EVENT:
+                continue
+
             events.append(
                 f"Dialogue: 0,{_ass_time(active.start)},{_ass_time(stop)},"
                 f"Main,,0,0,0,,{prefix}{' '.join(parts)}"

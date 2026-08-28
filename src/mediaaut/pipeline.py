@@ -22,6 +22,7 @@ from mediaaut.render.compose import Clip, plan_clips, render_short
 from mediaaut.render.templates import Template, get_template, pick_from, pick_template
 from mediaaut.subtitles.ass_writer import write_ass
 from mediaaut.subtitles.transcribe import align_to_script, transcribe
+from mediaaut.visuals.build import build_clips
 from mediaaut.voice.base import get_provider
 
 log = get_logger(__name__)
@@ -117,11 +118,18 @@ def make_short(
 
     # 4. Rendu ------------------------------------------------------------
     start = time.perf_counter()
-    clips: list[Clip] = (
-        plan_clips(broll, voice.duration, min_shot=template.shot_seconds)
-        if broll
-        else []
+    # Le directeur visuel place les cartes de code aux instants ou la
+    # narration nomme un artefact technique, et rend le reste au b-roll.
+    # Sans artefact reconnu, le resultat est celui d'avant : du b-roll
+    # simplement reparti.
+    clips: list[Clip] = build_clips(
+        words, broll or [], job,
+        width=channel.render.width,
+        height=channel.render.height,
+        shot_seconds=template.shot_seconds,
     )
+    if not clips and broll:
+        clips = plan_clips(broll, voice.duration, min_shot=template.shot_seconds)
     render_short(
         out_path=job / "short.mp4",
         voice_path=voice.path,

@@ -27,6 +27,11 @@ CATALOG: dict[str, str] = {
     "Anton": "ofl/anton/Anton-Regular.ttf",
     "Bebas Neue": "ofl/bebasneue/BebasNeue-Regular.ttf",
     "Poppins ExtraBold": "ofl/poppins/Poppins-ExtraBold.ttf",
+    # Monospace pour les cartes de code et de terminal. Statique, pas
+    # variable : libass et Pillow instancient une police variable au poids
+    # par defaut, ce qui donne un rendu plus fin que demande.
+    "IBM Plex Mono": "ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+    "IBM Plex Mono SemiBold": "ofl/ibmplexmono/IBMPlexMono-SemiBold.ttf",
 }
 
 

@@ -20,11 +20,17 @@ log = get_logger(__name__)
 
 @dataclass(slots=True)
 class Clip:
-    """Un plan de b-roll et la portion de la timeline qu'il occupe."""
+    """Un plan et la portion de la timeline qu'il occupe.
+
+    `still` distingue une image fixe — une carte de code — d'un extrait
+    video. ffmpeg ne sait pas deduire la duree d'un PNG : il faut la lui
+    imposer avec `-loop 1 -t`, faute de quoi le plan dure une image.
+    """
 
     path: Path
     duration: float
     start: float = 0.0     # point d'entree dans le fichier source
+    still: bool = False
 
 
 def escape_path(path: Path) -> str:
@@ -117,12 +123,22 @@ def render_short(
 
     if clips:
         for index, clip in enumerate(clips):
-            inputs += [
-                "-ss", f"{clip.start:.3f}",
-                "-t", f"{clip.duration:.3f}",
-                "-i", str(clip.path),
-            ]
-            if template.fill_mode == "blur":
+            if clip.still:
+                inputs += ["-loop", "1", "-t", f"{clip.duration:.3f}", "-i", str(clip.path)]
+            else:
+                inputs += [
+                    "-ss", f"{clip.start:.3f}",
+                    "-t", f"{clip.duration:.3f}",
+                    "-i", str(clip.path),
+                ]
+            if clip.still:
+                # Une carte est deja composee au format cible : la recadrer
+                # ou la flouter n'aurait aucun sens. Un zoom tres lent suffit
+                # a lui donner vie sans la rendre illisible.
+                graph.append(
+                    _crop_chain(index, clip, width, video_height, fps, zoom=1.04)
+                )
+            elif template.fill_mode == "blur":
                 graph.append(_blur_fill_chain(index, width, video_height, fps))
             else:
                 graph.append(

@@ -60,7 +60,11 @@ channels:
     render:
       # Rotation des templates : deux videos consecutives ne partagent jamais
       # la meme mise en page. Contre-mesure directe au filtre "template unique".
-      templates: [bold_center, side_caption, split_top]
+      # bold_center pour le b-roll de banque, ou le texte porte le sens ;
+      # story pour le materiau reel, ou c'est l'image qui le porte.
+      # Les deux alternent : deux videos consecutives ne partagent
+      # jamais la meme mise en page.
+      templates: [bold_center, story]
     platforms: [youtube, instagram, tiktok]
     schedule:
       shorts_per_day: 2
@@ -78,7 +82,7 @@ channels:
       voice_id: ff_siwis
       speed: 1.0
     render:
-      templates: [bold_center, side_caption]
+      templates: [bold_center, story]
     platforms: [youtube]
     enabled: false            # activee en phase 7 (doublage)
     schedule:

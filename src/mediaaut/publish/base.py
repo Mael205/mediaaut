@@ -69,7 +69,15 @@ def get_publisher(name: str, channel_id: str | None = None) -> Publisher:
         from mediaaut.publish.youtube import YouTubePublisher
 
         return YouTubePublisher(channel_id)
-    raise ValueError(f"plateforme inconnue ou pas encore implementee : {name}")
+    if name == "instagram":
+        from mediaaut.publish.instagram import InstagramPublisher
+
+        return InstagramPublisher(channel_id)
+    if name == "tiktok":
+        from mediaaut.publish.tiktok import TikTokPublisher
+
+        return TikTokPublisher(channel_id)
+    raise ValueError(f"plateforme inconnue : {name} (youtube, instagram, tiktok)")
 
 
 def truncate(text: str, limit: int) -> str:

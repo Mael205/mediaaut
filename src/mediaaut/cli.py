@@ -70,7 +70,7 @@ def doctor() -> None:
             "" if value else "a renseigner dans .env",
         )
 
-    for platform in ("youtube",):
+    for platform in ("youtube", "instagram", "tiktok"):
         try:
             from mediaaut.publish.base import get_publisher
 

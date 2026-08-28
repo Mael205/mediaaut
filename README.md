@@ -11,7 +11,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 |-------|---------|------|
 | 1 | Socle + rendu d'un short de bout en bout | **fait** |
 | 2 | Publication YouTube + b-roll de banque | **fait** |
-| 3 | Publication Instagram + TikTok | a faire |
+| 3 | Publication Instagram + TikTok | **fait** |
 | 4 | Pipeline de decoupage (video longue -> shorts) | a faire |
 | 5 | Ecriture des scripts par LLM + file d'idees | **fait** |
 | 6 | Scheduler + rotation des templates | a faire |
@@ -148,6 +148,22 @@ recours. La console `mediaaut studio` ne contourne pas cette regle : elle reduit
 le geste manuel a son minimum et enregistre l'etat. Le televersement reste fait
 par un humain sur youtube.com, parce que piloter le site par navigateur viole
 les CGU de YouTube et expose la chaine — l'actif meme qu'on construit.
+
+**Instagram et TikTok n'attendent aucun audit.** Instagram publie depuis une
+application Meta en mode Developpement des lors que le compte vise porte le role
+« Instagram Tester » — la revue ne concerne que les comptes qu'on ne possede
+pas. TikTok depose en brouillon via le scope `video.upload`, sans audit ; seul
+le Direct Post en exige un. Les deux sont donc automatisables integralement
+aujourd'hui, la ou YouTube reste manuel.
+
+**Envoi de fichier local sur Instagram.** L'API Reels attend normalement une URL
+publique, ce qui obligerait a heberger les videos. `upload_type=resumable` evite
+cela : le binaire part sur `rupload.facebook.com`, un hote distinct du reste de
+l'API.
+
+**Dossier de donnees redirigeable.** `MEDIAAUT_DATA`, lu depuis l'environnement
+ou depuis `.env`, deplace `data/` vers un dossier synchronise. Produire sur une
+machine et mettre en ligne depuis une autre ne demande rien de plus.
 
 ## Politique de contenu
 

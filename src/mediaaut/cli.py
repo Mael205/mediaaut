@@ -480,5 +480,52 @@ def studio(
     serve(port=port, channel_id=channel, open_browser=not no_browser)
 
 
+@app.command()
+def clip(
+    source: str = typer.Argument(..., help="Fichier local, ou URL de video longue"),
+    channel: str = typer.Option(..., "--channel", "-c", help="Identifiant de chaine"),
+    count: int = typer.Option(6, "--count", "-n", help="Nombre d'extraits vises"),
+    topic: str = typer.Option("", "--topic", help="Sujet de la video, aide la selection"),
+    reframe: str = typer.Option(
+        "blur", "--reframe", help="blur (garde toute l'image) | crop (plein cadre)"
+    ),
+    template: str = typer.Option(None, "--template", "-t"),
+    whisper_model: str = typer.Option("large-v3", "--whisper"),
+    language: str = typer.Option(None, "--language", help="Force la langue de la source"),
+) -> None:
+    """Decoupe une video longue en plusieurs shorts verticaux.
+
+    Produit du volume sans consommer d'idees : six extraits d'une meme video
+    sont six sujets distincts. Et comme le contenu vient d'un enregistrement
+    reel, il echappe a la question du contenu fabrique.
+    """
+    from mediaaut.clip.pipeline import clip_video
+
+    if reframe not in ("blur", "crop"):
+        raise typer.BadParameter("--reframe attend blur ou crop")
+
+    try:
+        result = clip_video(
+            source,
+            channel,
+            count=count,
+            topic=topic,
+            reframe=reframe,
+            template_name=template,
+            whisper_model=whisper_model,
+            language=language,
+        )
+    except (RuntimeError, FileNotFoundError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    console.print(f"\n[bold green]{len(result.clips)} extrait(s)[/bold green]")
+    for entry in result.clips:
+        console.print(
+            f"  [cyan]{entry['title']}[/cyan]  "
+            f"[dim]{entry['start']:.0f}s, {entry['duration']:.0f}s[/dim]"
+        )
+
+
 if __name__ == "__main__":
     app()

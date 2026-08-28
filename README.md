@@ -12,7 +12,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 | 1 | Socle + rendu d'un short de bout en bout | **fait** |
 | 2 | Publication YouTube + b-roll de banque | **fait** |
 | 3 | Publication Instagram + TikTok | **fait** |
-| 4 | Pipeline de decoupage (video longue -> shorts) | a faire |
+| 4 | Pipeline de decoupage (video longue -> shorts) | **fait** |
 | 5 | Ecriture des scripts par LLM + file d'idees | **fait** |
 | 6 | Scheduler + rotation des templates | a faire |
 | -- | Console locale de mise en ligne assistee | **fait** |
@@ -79,7 +79,7 @@ src/mediaaut/
   assets/      polices telechargees dans le projet
   render/      templates de mise en page, composition ffmpeg
   publish/     publication par plateforme (YouTube fait, IG/TikTok a venir)
-  clip/        (phase 4) decoupage de video longue
+  clip/        decoupage d'une video longue en shorts verticaux
   script/      ecriture des idees et des scripts par Claude
   ideas/       file d'idees par chaine, avec garde anti-repetition
   studio/      console locale de mise en ligne, tant que l'audit n'est pas accorde
@@ -164,6 +164,17 @@ l'API.
 **Dossier de donnees redirigeable.** `MEDIAAUT_DATA`, lu depuis l'environnement
 ou depuis `.env`, deplace `data/` vers un dossier synchronise. Produire sur une
 machine et mettre en ligne depuis une autre ne demande rien de plus.
+
+**Le decoupage produit du volume sans consommer d'idees.** Six extraits d'une
+meme video sont six sujets distincts sans avoir eu a en trouver six — et comme
+le contenu vient d'un enregistrement reel, il echappe entierement a la question
+du contenu fabrique.
+
+**Le hook sert d'ancre de position, pas de decoration.** Les horodatages rendus
+par le modele derivent : un extrait annonce a 59 s visait en realite un passage
+trente secondes plus loin, et son titre ne correspondait plus au contenu. On
+demande donc au modele de recopier la premiere phrase du passage, puis on la
+retrouve dans la transcription pour corriger la position.
 
 ## Politique de contenu
 

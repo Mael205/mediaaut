@@ -64,13 +64,13 @@ class SubtitleStyle:
     # pointer un mot.
     cue_palette: tuple[str, ...] = ()
 
-    fit_width: float = 0.82
+    fit_width: float = 0.72
     # Hauteur des capitales visee, en fraction de la hauteur du cadre. Borne
     # les cues d'un ou deux mots courts, que l'ajustement en largeur seul
     # ferait grimper a des tailles absurdes.
-    fit_height: float = 0.105
-    min_size: int = 96
-    max_size: int = 330
+    fit_height: float = 0.088
+    min_size: int = 84
+    max_size: int = 270
 
 
 PRESETS: dict[str, SubtitleStyle] = {
@@ -88,7 +88,7 @@ PRESETS: dict[str, SubtitleStyle] = {
         font="Poppins ExtraBold", accent_scale=106, uppercase=False,
         outline=7.0, shadow=0.0,
         cue_palette=("FFFFFF", "FF3B30", "FFE14D", "34C759", "FFFFFF", "FF2D95", "0A84FF"),
-        fit_width=0.46, fit_height=0.032, min_size=44, max_size=104,
+        fit_width=0.60, fit_height=0.044, min_size=58, max_size=138,
     ),
     # Boite opaque : lisible sur n'importe quel b-roll clair.
     "boxed": SubtitleStyle(

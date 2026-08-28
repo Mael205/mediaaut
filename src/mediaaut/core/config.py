@@ -69,7 +69,7 @@ class RenderConfig(BaseModel):
 
 
 class VoiceConfig(BaseModel):
-    provider: Literal["kokoro", "edge"] = "kokoro"
+    provider: Literal["kokoro", "chatterbox", "edge"] = "chatterbox"
     voice_id: str = "am_michael"
     speed: float = 1.0
 

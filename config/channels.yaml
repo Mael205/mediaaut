@@ -14,7 +14,11 @@ defaults:
     music_gain_db: -22.0
     voice_gain_db: 0.0
   voice:
-    provider: kokoro
+    # Chatterbox-Turbo : nettement plus naturel que Kokoro, tourne en local
+    # dans .venv-tts. `voice_id` designe un echantillon de
+    # data/assets/voices/ a cloner ; « default » utilise sa voix native.
+    provider: chatterbox
+    voice_id: default
     speed: 1.0
   # Vocabulaire visuel de la chaine. Les requetes que le modele invente
   # derivent vers le litteral : « hidden cost » ramene des billets de banque,
@@ -54,9 +58,7 @@ channels:
 
       No listicles, no generic hype, no "top 10 AI tools" formats.
     voice:
-      provider: kokoro
-      voice_id: am_michael
-      speed: 1.05
+      voice_id: default
     render:
       # Rotation des templates : deux videos consecutives ne partagent jamais
       # la meme mise en page. Contre-mesure directe au filtre "template unique".
@@ -78,9 +80,7 @@ channels:
       Meme angle que ai-builders-en. Cette chaine est alimentee par doublage
       du contenu anglais, pas par une ecriture independante.
     voice:
-      provider: kokoro
-      voice_id: ff_siwis
-      speed: 1.0
+      voice_id: default
     render:
       templates: [bold_center, story]
     platforms: [youtube]

@@ -40,8 +40,14 @@ def get_provider(name: str) -> VoiceProvider:
         from mediaaut.voice.kokoro import KokoroVoice
 
         return KokoroVoice()
+    if name == "chatterbox":
+        from mediaaut.voice.chatterbox import ChatterboxVoice
+
+        return ChatterboxVoice()
     if name == "edge":
         from mediaaut.voice.edge import EdgeVoice
 
         return EdgeVoice()
-    raise ValueError(f"moteur de voix inconnu : {name} (attendu : kokoro, edge)")
+    raise ValueError(
+        f"moteur de voix inconnu : {name} (attendu : kokoro, chatterbox, edge)"
+    )

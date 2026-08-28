@@ -13,19 +13,12 @@ peux pas deviner. Tout le reste est prêt à coller.
 
 ## À faire avant d'ouvrir le formulaire
 
-1. **Publier les deux pages** (`docs/index.html` et `docs/privacy.html`) sur
-   GitHub Pages :
-   - créer un dépôt public `mediaaut` sur GitHub, y pousser ce projet
-   - dépôt → **Settings → Pages** → Source : `Deploy from a branch`,
-     branche `main`, dossier `/docs` → **Save**
-   - au bout d'une minute les pages sont en ligne :
-     - `https://<ton-user>.github.io/mediaaut/`
-     - `https://<ton-user>.github.io/mediaaut/privacy.html`
-2. **Remplacer `MAEL_NOM_LEGAL`** dans `docs/index.html` par ton nom légal,
-   puis repousser.
-3. **Créer le projet Google Cloud** et noter son **numéro de projet** (un
+1. ~~Publier les deux pages sur GitHub Pages~~ — **fait**, elles sont en ligne :
+   - <https://mael205.github.io/mediaaut/>
+   - <https://mael205.github.io/mediaaut/privacy.html>
+2. **Créer le projet Google Cloud** et noter son **numéro de projet** (un
    nombre, pas l'identifiant texte) : Console → page d'accueil du projet.
-4. **Prendre trois captures d'écran** :
+3. **Prendre trois captures d'écran** :
    - la page d'accueil publiée (navigateur, URL visible)
    - la page de politique de confidentialité (navigateur, URL visible)
    - le terminal pendant `mediaaut publish`, montrant l'upload — c'est la
@@ -49,10 +42,10 @@ peux pas deviner. Tout le reste est prêt à coller.
 | Champ | Réponse |
 |---|---|
 | Are you applying | **As an individual user** |
-| Your Full Legal Name | `[À REMPLIR — prénom + nom tels qu'à l'état civil]` |
+| Your Full Legal Name | `Maël Mouisset--Ferrara` |
 | Your Organization's Legal Name | *(laisser vide, ou recopier ton nom légal si le champ est obligatoire)* |
 | Parent Company Name | *(vide)* |
-| Your Organization's Primary Website | `https://<ton-user>.github.io/mediaaut/` |
+| Your Organization's Primary Website | `https://Mael205.github.io/mediaaut/` |
 | Country | `France` |
 | Street Address | `[À REMPLIR]` |
 | City | `[À REMPLIR]` |
@@ -66,7 +59,7 @@ peux pas deviner. Tout le reste est prêt à coller.
 
 | Champ | Réponse |
 |---|---|
-| Name | `[À REMPLIR — ton nom légal]` |
+| Name | `Maël Mouisset--Ferrara` |
 | Email | `maelmouisset1@gmail.com` |
 
 ---
@@ -135,8 +128,8 @@ allocation.
 |---|---|
 | API Client Name | `mediaaut` |
 | Does this API Client name contain the word "YouTube"? | **No** |
-| Primary Access URL | `https://<ton-user>.github.io/mediaaut/` |
-| Privacy Policy URL | `https://<ton-user>.github.io/mediaaut/privacy.html` |
+| Primary Access URL | `https://Mael205.github.io/mediaaut/` |
+| Privacy Policy URL | `https://Mael205.github.io/mediaaut/privacy.html` |
 | Terms of Service URL | *(vide — facultatif)* |
 | Is your API Client publicly accessible? | **No** |
 
@@ -155,7 +148,7 @@ Si le formulaire l'exige quand même :
 | Demo Account Username or Email | `Not applicable — local command-line tool, no accounts` |
 | Demo Account Password | `Not applicable` |
 | Login URL | `Not applicable` |
-| Special Instructions for Access | `mediaaut is a command-line application that runs on my own machine. It has no login and no hosted interface. The source code and documentation are public at https://github.com/<ton-user>/mediaaut. A screenshot of the upload command in use is attached as evidence.` |
+| Special Instructions for Access | `mediaaut is a command-line application that runs on my own machine. It has no login and no hosted interface. The source code and documentation are public at https://github.com/Mael205/mediaaut. A screenshot of the upload command in use is attached as evidence.` |
 
 ⚠️ **Ne jamais fournir tes vrais identifiants Google.** Si la case
 d'acquittement bloque l'envoi, écris ce qui précède dans les instructions.
@@ -217,8 +210,8 @@ A small number of uploads per day to my own channels. The default allocation of
 
 | Preuve demandée | Quoi fournir |
 |---|---|
-| Privacy Policy Screenshot | capture de `https://<ton-user>.github.io/mediaaut/privacy.html`, URL visible |
-| Homepage Screenshot | capture de `https://<ton-user>.github.io/mediaaut/`, URL visible |
+| Privacy Policy Screenshot | capture de `https://Mael205.github.io/mediaaut/privacy.html`, URL visible |
+| Homepage Screenshot | capture de `https://Mael205.github.io/mediaaut/`, URL visible |
 | Terms of Service Documentation | pas de CGU (outil personnel) — joindre à nouveau la politique de confidentialité, ou laisser vide si facultatif |
 | OAuth screenshot | capture de l'écran de consentement Google pendant `mediaaut auth youtube` |
 | Upload Interface screenshot | capture du terminal pendant `mediaaut publish`, montrant la progression |

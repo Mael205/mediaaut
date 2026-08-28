@@ -13,7 +13,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 | 2 | Publication YouTube + b-roll de banque | **fait** |
 | 3 | Publication Instagram + TikTok | a faire |
 | 4 | Pipeline de decoupage (video longue -> shorts) | a faire |
-| 5 | Ecriture des scripts par LLM + file d'idees | a faire |
+| 5 | Ecriture des scripts par LLM + file d'idees | **fait** |
 | 6 | Scheduler + rotation des templates | a faire |
 | 7 | Doublage FR | a faire |
 | 8 | Video generative locale (LTX / Wan) | a faire |
@@ -71,9 +71,10 @@ src/mediaaut/
   subtitles/   transcription Whisper datee au mot, calibration typographique, ASS
   assets/      polices telechargees dans le projet
   render/      templates de mise en page, composition ffmpeg
-  publish/     (phase 2-3) publication par plateforme
+  publish/     publication par plateforme (YouTube fait, IG/TikTok a venir)
   clip/        (phase 4) decoupage de video longue
-  script/      (phase 5) ecriture LLM
+  script/      ecriture des idees et des scripts par Claude
+  ideas/       file d'idees par chaine, avec garde anti-repetition
   pipeline.py  orchestration
   cli.py       point d'entree unique, y compris pour les taches planifiees
 ```
@@ -121,6 +122,17 @@ l'audit de conformite sont au niveau du projet : un seul suffit pour toutes les
 chaines. Ce qui differe est le consentement, qui designe la chaine YouTube
 ciblee. `secrets/youtube_token-<chaine>.json` les separe, faute de quoi
 autoriser une deuxieme chaine ecraserait silencieusement la premiere.
+
+**Anti-repetition mesuree, pas declarative.** Deux titres qui disent la meme
+chose sous des formulations differentes sont bloques par un recouvrement de
+Jaccard sur des racines lexicales (`ideas/store.py`). La premiere version
+comparait les mots bruts et laissait passer « How I automated my channel » face
+a « Automating a channel: how I did it » ; les cas qui ont motive le seuil
+actuel sont figes dans `tests/test_ideas.py`.
+
+**Debit de narration cale sur la mesure.** 215 mots par minute, moyenne relevee
+sur deux shorts narratifs a tres forte audience (214 et 228). Un script ecrit
+sans budget de mots produit une video deux fois trop longue pour sa duree visee.
 
 ## Politique de contenu
 

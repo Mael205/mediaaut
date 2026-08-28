@@ -10,7 +10,7 @@ from pathlib import Path
 
 import typer
 
-from mediaaut.core.logging import console, get_logger
+from mediaaut.core.logging import console, get_logger, step
 from mediaaut.core.paths import ensure_dirs
 
 app = typer.Typer(
@@ -211,6 +211,7 @@ def publish(
     import json as _json
     from datetime import UTC, datetime, timedelta
 
+    from mediaaut.core.db import already_published, record_publication
     from mediaaut.core.paths import OUT
     from mediaaut.publish.base import VideoMeta, get_publisher
 
@@ -261,13 +262,129 @@ def publish(
                           f"titre « {meta.title} »)[/dim]")
             continue
 
+        if channel_id and already_published(job_root.name, name):
+            console.print(f"  [yellow]deja publie sur {name}, ignore[/yellow]")
+            continue
+
         result = publisher.publish(video, meta)
+        record_publication(
+            job_id=job_root.name,
+            channel_id=channel_id or "",
+            platform=name,
+            ok=result.ok,
+            video_id=result.video_id,
+            url=result.url,
+            visibility=result.visibility,
+            detail=result.detail,
+        )
         if result.ok:
             console.print(f"  [green]{result.url}[/green]  visibilite={result.visibility}")
             if result.detail:
                 console.print(f"  [yellow]{result.detail}[/yellow]")
         else:
             console.print(f"  [red]echec : {result.detail}[/red]")
+
+
+ideas_app = typer.Typer(no_args_is_help=True, help="File d'idees par chaine.")
+app.add_typer(ideas_app, name="ideas")
+
+
+@ideas_app.command("generate")
+def ideas_generate(
+    channel: str = typer.Argument(..., help="Identifiant de chaine"),
+    count: int = typer.Option(8, "--count", "-n", help="Nombre d'idees a proposer"),
+    steer: str = typer.Option("", "--steer", help="Direction supplementaire donnee au modele"),
+) -> None:
+    """Fait proposer de nouveaux sujets, en evitant ceux deja couverts."""
+    from mediaaut.core.config import get_channel
+    from mediaaut.ideas.store import add_ideas, recent_titles
+    from mediaaut.script.writer import generate_ideas
+
+    channel_config = get_channel(channel)
+    drafts = generate_ideas(channel_config, count, avoid=recent_titles(channel), steer=steer)
+    added, skipped = add_ideas(channel, [d.model_dump() for d in drafts])
+
+    console.print(f"[bold]{added}[/bold] idee(s) ajoutee(s), {skipped} ecartee(s)")
+    for draft in drafts:
+        console.print(f"  [cyan]{draft.title}[/cyan]")
+        console.print(f"    [dim]{draft.angle}[/dim]")
+
+
+@ideas_app.command("list")
+def ideas_list(
+    channel: str = typer.Argument(...),
+    status: str = typer.Option(None, "--status", help="queued | used"),
+) -> None:
+    """Affiche les idees d'une chaine."""
+    from rich.table import Table
+
+    from mediaaut.ideas.store import counts, list_ideas
+
+    table = Table("id", "statut", "titre", "angle")
+    for idea in list_ideas(channel, status):
+        table.add_row(str(idea.id), idea.status, idea.title, idea.angle[:60])
+    console.print(table)
+    console.print(f"[dim]{counts(channel)}[/dim]")
+
+
+@app.command()
+def auto(
+    channel: str = typer.Argument(..., help="Identifiant de chaine"),
+    seconds: float = typer.Option(38.0, "--seconds", help="Duree de narration visee"),
+    template: str = typer.Option(None, "--template", "-t"),
+    publish_now: bool = typer.Option(False, "--publish", help="Publier apres le rendu"),
+    private: bool = typer.Option(False, "--private", help="Si publie, rester en prive"),
+    whisper_model: str = typer.Option("small", "--whisper"),
+) -> None:
+    """Chaine complete : idee suivante, script, b-roll, rendu, publication.
+
+    C'est la commande destinee au planificateur de taches. Elle consomme une
+    idee de la file ; si la file est vide elle s'arrete plutot que d'inventer
+    un sujet, pour qu'un stock epuise se voie au lieu de degrader le contenu.
+    """
+    from mediaaut.core.config import get_channel
+    from mediaaut.ideas.store import counts, mark_used, next_idea
+    from mediaaut.pipeline import make_short
+    from mediaaut.publish.base import VideoMeta
+    from mediaaut.script.models import IdeaDraft
+    from mediaaut.script.writer import write_script
+
+    channel_config = get_channel(channel)
+    idea = next_idea(channel)
+    if idea is None:
+        console.print(
+            f"[yellow]aucune idee en attente pour {channel}[/yellow] — lancer "
+            f"`mediaaut ideas generate {channel}`"
+        )
+        raise typer.Exit(1)
+
+    step("idee", titre=idea.title)
+    draft = write_script(
+        channel_config,
+        IdeaDraft(title=idea.title, angle=idea.angle, hook=idea.hook),
+        seconds=seconds,
+    )
+
+    meta = VideoMeta(
+        title=draft.title,
+        description=draft.description,
+        tags=draft.tags,
+        language=channel_config.language,
+    )
+    result = make_short(
+        channel,
+        draft.narration,
+        template_name=template,
+        broll_queries=draft.broll_queries,
+        whisper_model=whisper_model,
+        meta=meta,
+    )
+    mark_used(idea.id, result.job_id)
+    console.print(f"[bold green]{result.video_path}[/bold green]")
+    console.print(f"[dim]file restante : {counts(channel)}[/dim]")
+
+    if publish_now:
+        publish(result.job_id, platform=["youtube"], title=None, private=private, dry_run=False)
 
 
 if __name__ == "__main__":

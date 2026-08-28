@@ -112,6 +112,17 @@
   copy to request deletion of, because no data ever leaves the local machine
   except API calls made directly to Google.
 </p>
+<p>
+  Should authorisation ever be revoked, or a deletion be requested, all stored
+  YouTube API data is deleted within 30 days, as required by the YouTube API
+  Services Developer Policies. In practice deletion is immediate: revoking
+  access invalidates the token, and the operator holds the only copy.
+</p>
+<p>
+  mediaaut never requests, uses, or stores a Google username or password.
+  Authorisation is obtained solely through Google's OAuth consent screen, and
+  the tool only ever receives the resulting token.
+</p>
 
 <h2>6. Scopes requested</h2>
 <ul>

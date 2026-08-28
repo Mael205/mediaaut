@@ -197,12 +197,34 @@ visibility.
 | Champ | Réponse |
 |---|---|
 | youtube.search.list quota | `0` — cet endpoint n'est pas utilisé |
-| youtube.videos.insert quota | `100` par jour (le défaut), justification ci-dessous |
+| youtube.videos.insert — par jour | `100` (le défaut) |
+| youtube.videos.insert — pic par minute | `10` |
 
 ```
 A small number of uploads per day to my own channels. The default allocation of
 100 videos.insert calls per day is more than sufficient.
+
+Peak per-minute usage is negligible. Each video I publish costs exactly three
+API calls: one channels.list to confirm the target channel, one videos.insert,
+and one videos.list to read back the resulting privacy status. Even if two
+videos were rendered and published back to back, the peak would be six calls in
+a minute. I am requesting 10 as a round figure with headroom, not because I
+expect to approach it.
 ```
+
+### Sur le quota par minute — ce qu'il faut savoir
+
+Google ne publie pas de valeur unique pour le « queries per minute » par défaut,
+et la limite par utilisateur n'est de toute façon **pas modifiable** : seule la
+limite journalière l'est. Deux conséquences pratiques :
+
+1. **Ne demande rien d'exceptionnel ici.** Le champ sert à vérifier que ton
+   usage est cohérent avec ta description, pas à négocier. Un chiffre modeste
+   et justifié vaut mieux qu'un chiffre rond sorti de nulle part.
+2. **Va lire ta propre valeur** avant de remplir : Google Cloud Console →
+   **API et services → YouTube Data API v3 → Quotas et limites système**. Tu y
+   verras les compteurs réels de ton projet. Si la valeur affichée diffère de
+   ce que je propose, mets la tienne — c'est celle qui fait foi.
 
 ---
 
@@ -215,6 +237,69 @@ A small number of uploads per day to my own channels. The default allocation of
 | Terms of Service Documentation | pas de CGU (outil personnel) — joindre à nouveau la politique de confidentialité, ou laisser vide si facultatif |
 | OAuth screenshot | capture de l'écran de consentement Google pendant `mediaaut auth youtube` |
 | Upload Interface screenshot | capture du terminal pendant `mediaaut publish`, montrant la progression |
+
+---
+
+## Ce que les relecteurs vérifient réellement
+
+L'audit ne juge pas la qualité de ton produit : il vérifie la conformité aux
+[YouTube API Services Developer Policies](https://developers.google.com/youtube/terms/developer-policies-guide).
+Voici les obligations effectivement contrôlées, et où en est le dossier.
+
+| Obligation | État | Où c'est traité |
+|---|---|---|
+| Politique de confidentialité publique et conforme | **fait** | `docs/privacy.html`, en ligne en https |
+| Suppression des données sous 30 jours sur demande ou révocation | **fait** | section 5 de la politique |
+| Ne jamais demander ni stocker identifiant/mot de passe | **fait** | OAuth uniquement, dit explicitement dans la politique |
+| Pas de collecte d'identifiants, santé, opinions politiques ou religieuses | sans objet | aucune donnée d'autrui n'est traitée |
+| Pas de métriques recalculées se substituant à celles de l'API | sans objet | aucune métrique n'est affichée |
+| Ne pas bloquer le lecteur YouTube ni masquer titre/miniature | sans objet | aucun lecteur intégré |
+| Pas de téléchargement de vidéos pour lecture hors ligne | sans objet | l'outil téléverse, il ne télécharge pas |
+| **Pas de « sharding »** : plusieurs projets pour gonfler le quota | **fait** | un seul projet, déclaré tel quel |
+| Divulgation du contenu altéré ou synthétique | **fait** | `containsSyntheticMedia` à chaque upload, vérifiable dans `src/mediaaut/publish/youtube.py` |
+
+Le point le plus sanctionné est le dernier de la liste des motifs de rejet
+courants : **les cas d'usage qui ressemblent à du scraping, de la collecte en
+masse ou de l'analyse concurrentielle.** Ton dossier est à l'exact opposé —
+trois endpoints, aucune lecture de contenu d'autrui, aucun `search.list` — et
+c'est ce qu'il faut mettre en avant.
+
+---
+
+## Combien de temps avant une réponse
+
+**Prévois 4 à 8 semaines, et sache que ça peut être bien plus long.**
+
+Google ne s'engage sur aucun délai. La formule officielle est « un membre de
+l'équipe vous contactera dès que possible ». Ce que rapportent les développeurs :
+
+| Ce qu'on observe | Fréquence |
+|---|---|
+| Quelques semaines | cas courant |
+| 4 semaines et plus de silence, relances sans réponse | fréquemment rapporté sur le forum développeurs |
+| Plusieurs mois — un cas documenté à 5 mois | minoritaire mais réel |
+| Accord partiel, en dessous de ce qui était demandé | courant sur les demandes d'extension |
+
+Ce dernier point est une raison de plus de ne demander **que le quota par
+défaut** : il n'y a rien à rogner, donc rien à négocier.
+
+**Trois conséquences concrètes pour toi :**
+
+1. **Dépose le formulaire avant tout le reste.** C'est le seul élément du projet
+   dont le délai ne dépend pas de toi. Tout le reste — clés, chaînes, contenu —
+   peut avancer en parallèle.
+2. **Ne reste pas bloqué en attendant.** `mediaaut publish --private` fonctionne
+   dès maintenant : le pipeline complet est validé, les vidéos arrivent sur la
+   chaîne, elles restent simplement privées. Le jour de l'accord, tu retires le
+   drapeau et tu publies.
+3. **Attention aux vidéos uploadées entre-temps.** Celles envoyées par API avant
+   l'accord sont verrouillées **définitivement** en privé — elles ne pourront pas
+   être rendues publiques rétroactivement. Ne « stocke » donc pas des semaines de
+   contenu par API en espérant tout publier à l'accord : ces fichiers seraient
+   perdus. Garde les MP4 en local, ils sont dans `data/out/`.
+
+Si aucune réponse au bout de 6 semaines, relance via le même formulaire en
+citant la date de la demande initiale.
 
 ---
 

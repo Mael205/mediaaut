@@ -31,6 +31,13 @@ T = TypeVar("T", bound=BaseModel)
 
 ANTHROPIC_MODEL = "claude-opus-5"
 
+# Contexte de 4096 tokens : suffisant pour un plan ou une section, et mesure
+# nettement plus rapide que 8192, ou une partie du modele deborde du GPU.
+_NUM_CTX = 4096
+# Plafond de generation. Voir le commentaire dans `_ollama` : sans lui, le
+# decodage contraint sur un schema imbrique ne termine pas.
+_NUM_PREDICT = 1400
+
 
 def _ollama(system: str, instruction: str, schema: type[T]) -> T:
     """Genere avec un modele local servi par Ollama.
@@ -53,7 +60,16 @@ def _ollama(system: str, instruction: str, schema: type[T]) -> T:
                 "format": schema.model_json_schema(),
                 "think": False,
                 "stream": False,
-                "options": {"temperature": 0.85, "num_ctx": 8192},
+                "options": {
+                    "temperature": 0.85,
+                    "num_ctx": _NUM_CTX,
+                    # Plafond indispensable : sur un schema imbrique (une
+                    # liste d'objets), le decodage contraint part en boucle et
+                    # ne s'arrete jamais. Mesure sur qwen3:8b — sans plafond
+                    # la meme requete depasse 180 s sans rendre la main, avec
+                    # elle rend en 40 s.
+                    "num_predict": _NUM_PREDICT,
+                },
             },
             timeout=600,
         )

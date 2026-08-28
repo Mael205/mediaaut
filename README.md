@@ -15,6 +15,7 @@ Tout tourne en local, sans service payant sur le chemin critique.
 | 4 | Pipeline de decoupage (video longue -> shorts) | **fait** |
 | 5 | Ecriture des scripts par LLM + file d'idees | **fait** |
 | 6 | Scheduler + rotation des templates | a faire |
+| 9 | Production long-form (16:9, chapitree, miniature) | **fait** |
 | -- | Console locale de mise en ligne assistee | **fait** |
 | 7 | Doublage FR | a faire |
 | 8 | Video generative locale (LTX / Wan) | a faire |
@@ -80,6 +81,7 @@ src/mediaaut/
   render/      templates de mise en page, composition ffmpeg
   publish/     publication par plateforme (YouTube fait, IG/TikTok a venir)
   clip/        decoupage d'une video longue en shorts verticaux
+  longform/    videos longues 16:9, ecrites section par section
   script/      ecriture des idees et des scripts par Claude
   ideas/       file d'idees par chaine, avec garde anti-repetition
   studio/      console locale de mise en ligne, tant que l'audit n'est pas accorde

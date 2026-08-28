@@ -527,5 +527,40 @@ def clip(
         )
 
 
+@app.command()
+def longform(
+    channel: str = typer.Argument(..., help="Identifiant de chaine"),
+    topic: str = typer.Option(..., "--topic", "-T", help="Sujet de la video"),
+    minutes: float = typer.Option(9.0, "--minutes", "-m", help="Duree visee"),
+    music: Path = typer.Option(None, "--music", exists=True),
+    subtitles: bool = typer.Option(False, "--subtitles", help="Incruster les sous-titres"),
+) -> None:
+    """Produit une video longue horizontale, chapitree, avec sa miniature.
+
+    Le long-form est la seule source de revenu publicitaire reelle : les
+    Shorts rapportent 0,03 a 0,08 dollar pour mille vues, le long-form 8 a
+    20. C'est aussi la seule voie vers les heures de visionnage exigees par
+    le programme partenaire.
+    """
+    from mediaaut.longform.pipeline import make_long
+
+    try:
+        result = make_long(
+            channel, topic, minutes=minutes, music=music, burn_subtitles=subtitles
+        )
+    except (RuntimeError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    console.print(f"\n[bold green]{result.video_path}[/bold green]")
+    console.print(f"[dim]miniature : {result.thumbnail_path}[/dim]")
+    console.print(
+        f"[dim]{result.sections} sections, {result.words} mots, "
+        f"{result.duration / 60:.1f} min[/dim]"
+    )
+    for chapter in result.chapters:
+        console.print(f"  [cyan]{chapter}[/cyan]")
+
+
 if __name__ == "__main__":
     app()

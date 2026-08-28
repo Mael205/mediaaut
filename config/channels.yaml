@@ -29,9 +29,16 @@ channels:
     # Angle editorial impose au LLM : c'est ce qui distingue le contenu du
     # "mass-produced" sanctionne par la politique Inauthentic Content.
     angle: >
-      First-person builder perspective. Every video makes one concrete,
-      falsifiable claim backed by something actually tested. No listicles,
-      no generic hype, no "top 10 AI tools" formats.
+      Explain one mechanism that a working developer can verify for themselves:
+      how a tool actually behaves, what a constraint really costs, why a common
+      assumption is wrong. Stay on publicly checkable ground - documented
+      behaviour, published limits, observable trade-offs.
+
+      Never claim personal experience the script cannot support: no "I built",
+      no "I tested", no invented projects or measurements. The authority comes
+      from the explanation being correct, not from claiming to have run it.
+
+      No listicles, no generic hype, no "top 10 AI tools" formats.
     voice:
       provider: kokoro
       voice_id: am_michael

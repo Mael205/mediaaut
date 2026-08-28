@@ -25,6 +25,13 @@ class Settings(BaseSettings):
         env_file=ROOT / ".env", env_file_encoding="utf-8", extra="ignore"
     )
 
+    # Ecriture des scripts. `ollama` ne coute rien et tourne en local ;
+    # `anthropic` donne une meilleure ecriture contre quelques centimes par
+    # script ; `manual` lit des scripts deja rediges.
+    script_backend: Literal["ollama", "anthropic", "manual"] = "ollama"
+    ollama_model: str = "qwen3:8b"
+    ollama_host: str = "http://127.0.0.1:11434"
+
     anthropic_api_key: str | None = None
     pexels_api_key: str | None = None
     pixabay_api_key: str | None = None

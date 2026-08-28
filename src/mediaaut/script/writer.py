@@ -1,4 +1,4 @@
-"""Ecriture des idees et des scripts par un modele Claude.
+"""Ecriture des idees et des scripts, quel que soit le moteur configure.
 
 Deux contraintes gouvernent ces prompts, toutes deux mesurees plutot que
 supposees :
@@ -16,23 +16,31 @@ supposees :
 
 from __future__ import annotations
 
-from mediaaut.core.config import ChannelConfig, get_settings
+import re
+
+from mediaaut.core.config import ChannelConfig
 from mediaaut.core.logging import get_logger
+from mediaaut.script.backends import generate
 from mediaaut.script.models import IdeaBatch, IdeaDraft, ScriptDraft
 
 log = get_logger(__name__)
-
-MODEL = "claude-opus-5"
 
 # Mots par minute vises pour la narration. Cale sur la mesure des references
 # analysees (214 et 228 mots/minute) ; en dessous, le rythme s'affaisse.
 WORDS_PER_MINUTE = 215
 
+# Un script qui n'atteint pas cette fraction du budget est redemande. Les
+# modeles locaux sous-tirent regulierement de 30 a 40 %.
+_MIN_LENGTH_RATIO = 0.8
+_LENGTH_RETRIES = 2
 
-def _client():
-    import anthropic
-
-    return anthropic.Anthropic(api_key=get_settings().require("anthropic_api_key"))
+# Chiffres de performance qu'un modele produit sans les avoir mesures :
+# « 4x plus rapide », « 30 % de gain ». Les pourcentages et multiplicateurs
+# sont les seuls vises ; une annee ou une taille de fichier restent legitimes.
+_FABRICATED_FIGURE = re.compile(
+    r"\s*\d+(?:[.,]\d+)?\s*(?:%|percent\b|x\b|times faster|times slower)",
+    re.I,
+)
 
 
 def target_words(seconds: float) -> int:
@@ -60,8 +68,13 @@ exhausted ground. A topic that merely rephrases one of them is a failure, even \
 if the wording differs: what matters is whether a viewer would feel they had \
 seen it before.
 
-Vary the shape of the topics across the batch. If several would open the same \
-way, or resolve the same way, change them."""
+Vary the shape of the topics across the batch. At most two may begin with the \
+same word. A batch whose titles all open identically reads as template output.
+
+Never invent a statistic. Do not write percentages, speed multipliers, time \
+savings or benchmark figures unless they were given to you. A topic that hinges \
+on a number you made up is worse than useless: it will be published as fact and \
+it will be wrong. Make the claim qualitative instead — what changes, and why."""
 
 
 def generate_ideas(
@@ -81,15 +94,7 @@ def generate_ideas(
     if steer:
         instruction += f"\n\nAdditional direction from the operator: {steer}"
 
-    response = _client().messages.parse(
-        model=MODEL,
-        max_tokens=8000,
-        system=IDEA_SYSTEM,
-        thinking={"type": "adaptive"},
-        messages=[{"role": "user", "content": instruction}],
-        output_format=IdeaBatch,
-    )
-    ideas = response.parsed_output.ideas
+    ideas = generate(IDEA_SYSTEM, instruction, IdeaBatch).ideas
     log.info("%d idee(s) proposee(s) pour %s", len(ideas), channel.id)
     return ideas
 
@@ -109,8 +114,14 @@ do not greet, do not announce what the video will cover.
 2. The substance: the specific claim, and the concrete detail that supports it.
 3. A last line that lands the point. Never ask for likes, follows or comments.
 
-The word budget is a hard constraint, not a target to approach. Going over it \
-makes the video longer than the format allows."""
+Never invent a statistic. No percentages, speed multipliers, benchmark results \
+or dated facts unless they appear in the material you were given. If a number \
+would strengthen the script but you do not have it, write the sentence without \
+it. An invented figure is published as fact and is wrong.
+
+The word budget is a hard constraint, not a target to approach. Reaching it \
+matters as much as not exceeding it: a script well under budget produces a \
+video far shorter than the format intends."""
 
 
 def write_script(
@@ -134,15 +145,41 @@ def write_script(
         "must describe something a camera could point at."
     )
 
-    response = _client().messages.parse(
-        model=MODEL,
-        max_tokens=8000,
-        system=SCRIPT_SYSTEM,
-        thinking={"type": "adaptive"},
-        messages=[{"role": "user", "content": instruction}],
-        output_format=ScriptDraft,
-    )
-    draft = response.parsed_output
+    draft = generate(SCRIPT_SYSTEM, instruction, ScriptDraft)
+
+    # Les modeles locaux visent regulierement 60 a 70 % du budget demande, ce
+    # qui donne une video nettement plus courte que prevu. Le redire dans le
+    # prompt initial n'y change rien ; le reclamer avec l'ecart mesure, si.
+    for attempt in range(_LENGTH_RETRIES):
+        spoken = len(draft.narration.split())
+        if spoken >= words * _MIN_LENGTH_RATIO:
+            break
+        log.info(
+            "script trop court (%d mots pour %d), nouvelle tentative %d/%d",
+            spoken, words, attempt + 1, _LENGTH_RETRIES,
+        )
+        draft = generate(
+            SCRIPT_SYSTEM,
+            f"{instruction}\n\n"
+            f"A previous attempt produced only {spoken} words, which is far short "
+            f"of the {words}-word budget and would make the video roughly "
+            f"{words / max(spoken, 1):.1f} times shorter than intended. Develop the "
+            f"substance further — a second concrete detail, a consequence, a case "
+            f"where it does not hold — until the narration reaches {words} words.",
+            ScriptDraft,
+        )
+
+    # Les chiffres fabriques survivent a l'instruction : les modeles locaux
+    # ecrivent « 4x plus rapide » sans rien avoir mesure. On les retire du
+    # texte plutot que de les publier comme des faits.
+    invented = _FABRICATED_FIGURE.findall(draft.narration)
+    if invented:
+        draft.narration = _FABRICATED_FIGURE.sub("", draft.narration)
+        draft.narration = re.sub(r"\s{2,}", " ", draft.narration).strip()
+        log.warning(
+            "chiffre(s) non verifie(s) retire(s) du script : %s",
+            ", ".join(sorted(set(invented))),
+        )
 
     spoken = len(draft.narration.split())
     log.info(
@@ -153,5 +190,10 @@ def write_script(
         log.warning(
             "script %d%% plus long que la cible ; la video depassera la duree visee",
             round((spoken / words - 1) * 100),
+        )
+    elif spoken < words * _MIN_LENGTH_RATIO:
+        log.warning(
+            "script encore court apres %d tentatives : %d mots pour %d",
+            _LENGTH_RETRIES, spoken, words,
         )
     return draft

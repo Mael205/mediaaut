@@ -58,9 +58,13 @@ def doctor() -> None:
     active = [c.id for c in channels.values() if c.enabled]
     table.add_row("chaines", "[green]ok[/green]", f"{len(active)} active(s) : {', '.join(active)}")
 
+    from mediaaut.script.backends import check_backend
+
+    ok, message = check_backend()
+    table.add_row("ecriture", "[green]ok[/green]" if ok else "[red]non[/red]", message)
+
     settings = get_settings()
     for label, value in (
-        ("cle Anthropic", settings.anthropic_api_key),
         ("cle Pexels", settings.pexels_api_key),
         ("cle Pixabay", settings.pixabay_api_key),
     ):

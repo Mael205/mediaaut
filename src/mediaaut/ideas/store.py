@@ -107,6 +107,17 @@ def similarity(left: str, right: str) -> float:
 # rien, un doublon publie coute une video repetitive de plus sur la chaine.
 SIMILARITY_THRESHOLD = 0.55
 
+# Nombre maximal d'idees en attente partageant le meme premier mot. Les
+# modeles produisent volontiers six titres commencant par « Why » ; le leur
+# interdire dans le prompt ne suffit pas, alors on l'applique ici. Une chaine
+# dont tous les titres s'ouvrent pareil affiche sa fabrication en serie.
+MAX_SAME_OPENING = 2
+
+
+def _opening(title: str) -> str:
+    words = re.findall(r"[\w']+", title.lower())
+    return words[0] if words else ""
+
 
 def add_ideas(channel_id: str, ideas: list[dict]) -> tuple[int, int]:
     """Insere des idees. Retourne (ajoutees, ignorees car deja couvertes).
@@ -117,6 +128,9 @@ def add_ideas(channel_id: str, ideas: list[dict]) -> tuple[int, int]:
     appel pourrait inserer deux formulations d'un seul sujet.
     """
     known = recent_titles(channel_id, limit=400)
+    openings: dict[str, int] = {}
+    for title in (i.title for i in list_ideas(channel_id, status="queued", limit=400)):
+        openings[_opening(title)] = openings.get(_opening(title), 0) + 1
     added = skipped = 0
 
     with db() as connection:
@@ -133,6 +147,15 @@ def add_ideas(channel_id: str, ideas: list[dict]) -> tuple[int, int]:
                 log.info(
                     "idee ecartee (%.0f%% de recouvrement avec « %s ») : %s",
                     close[0] * 100, close[1], title,
+                )
+                skipped += 1
+                continue
+
+            opening = _opening(title)
+            if openings.get(opening, 0) >= MAX_SAME_OPENING:
+                log.info(
+                    "idee ecartee (%d titres commencent deja par « %s ») : %s",
+                    openings[opening], opening, title,
                 )
                 skipped += 1
                 continue
@@ -155,6 +178,7 @@ def add_ideas(channel_id: str, ideas: list[dict]) -> tuple[int, int]:
             if cursor.rowcount:
                 added += 1
                 known.append(title)      # compare le reste du lot a celle-ci
+                openings[opening] = openings.get(opening, 0) + 1
             else:
                 skipped += 1
 

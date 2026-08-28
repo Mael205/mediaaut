@@ -66,3 +66,27 @@ def test_similarity_is_symmetric_and_bounded():
 
 def test_empty_title_scores_zero():
     assert similarity("", "anything at all") == 0.0
+
+
+# --- chiffres fabriques -------------------------------------------------
+# Les modeles locaux ecrivent « 4x plus rapide » sans rien avoir mesure. Ces
+# cas fixent la frontiere entre un chiffre de performance invente et un
+# chiffre legitime (annee, resolution, taille, duree).
+FIGURE_CASES = [
+    ("it runs 4x faster than before", True),
+    ("a 30% gain in throughput", True),
+    ("this is 2.5 times faster in practice", True),
+    ("cuts it by 40 percent", True),
+    ("released in 2024 with 8 GB of RAM", False),
+    ("the 8-bit format uses less memory", False),
+    ("a 90 second limit applies", False),
+    ("x264 encodes it", False),
+    ("H.264 at 1080x1920", False),
+]
+
+
+@pytest.mark.parametrize(("text", "is_fabricated"), FIGURE_CASES)
+def test_fabricated_figure_detection(text, is_fabricated):
+    from mediaaut.script.writer import _FABRICATED_FIGURE
+
+    assert bool(_FABRICATED_FIGURE.search(text)) is is_fabricated

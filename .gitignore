@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+data/out/
+data/cache/
+data/models/
+data/assets/
+data/*.sqlite
+data/*.sqlite-*
+secrets/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/

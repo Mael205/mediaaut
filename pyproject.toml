@@ -1,0 +1,52 @@
+[project]
+name = "mediaaut"
+version = "0.1.0"
+description = "Pipeline automatise de creation et publication de videos courtes et longues"
+requires-python = ">=3.11"
+dependencies = [
+    "typer>=0.15",
+    "rich>=13.9",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "pyyaml>=6.0",
+    "httpx>=0.28",
+    "python-dotenv>=1.0",
+    "numpy>=1.26",
+    "soundfile>=0.13",
+    "Pillow>=11.0",
+]
+
+[project.optional-dependencies]
+voice = ["kokoro-onnx>=0.4.9"]
+voice-edge = ["edge-tts>=7.0"]
+subtitles = ["faster-whisper>=1.1"]
+clip = ["yt-dlp>=2025.1.15", "opencv-python>=4.10"]
+publish = [
+    "google-api-python-client>=2.150",
+    "google-auth-oauthlib>=1.2",
+    "google-auth-httplib2>=0.2",
+]
+script = ["anthropic>=0.42"]
+dev = ["pytest>=8.3", "ruff>=0.9"]
+
+[project.scripts]
+mediaaut = "mediaaut.cli:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mediaaut"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# typer declare ses options en valeur par defaut : c'est l'idiome de la
+# librairie, pas l'anti-pattern que B008 cherche a signaler.
+"src/mediaaut/cli.py" = ["B008"]

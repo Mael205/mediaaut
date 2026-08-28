@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mediaaut — Privacy Policy</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #14171f; --muted: #5a6472;
+    --line: #e2e6ec; --accent: #1a56b8; --code-bg: #f5f7fa;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1319; --fg: #e6e9ef; --muted: #98a2b3;
+      --line: #232a35; --accent: #6ea8ff; --code-bg: #161c25;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 48px 20px 80px; }
+  h1 { font-size: 1.9rem; margin: 0 0 .2em; letter-spacing: -.02em; }
+  h2 { font-size: 1.1rem; margin: 2.1em 0 .5em; letter-spacing: -.01em; }
+  .updated { color: var(--muted); margin: 0 0 2em; font-size: .95rem; }
+  a { color: var(--accent); }
+  ul { padding-left: 1.2em; }
+  li { margin: .35em 0; }
+  code {
+    background: var(--code-bg); padding: .12em .38em;
+    border-radius: 4px; font-size: .9em;
+  }
+  footer {
+    margin-top: 3em; padding-top: 1.5em;
+    border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Privacy Policy</h1>
+<p class="updated">mediaaut &middot; last updated 28 August 2026</p>
+
+<h2>1. What mediaaut is</h2>
+<p>
+  mediaaut is a command-line tool that runs on a single operator's own computer.
+  It is not a hosted service, has no user accounts, no sign-up, and no server
+  that receives data. It is operated by one individual, for that individual's
+  own YouTube channels.
+</p>
+<p>
+  Because there are no third-party users, mediaaut does not collect, process, or
+  store personal information belonging to anyone other than its operator.
+</p>
+
+<h2>2. Data the tool handles</h2>
+<p>All of the following is stored only on the operator's local machine:</p>
+<ul>
+  <li>
+    <strong>Google OAuth tokens.</strong> An access token and refresh token,
+    obtained when the operator authorises the tool against their own Google
+    account, are written to a local file. They authorise uploads to the
+    operator's own channels and are never transmitted anywhere except to
+    Google's own API endpoints.
+  </li>
+  <li>
+    <strong>Video files, audio, and subtitles</strong> produced by the tool.
+  </li>
+  <li>
+    <strong>The channel name and channel ID</strong> returned by
+    <code>channels.list</code>, used to confirm which channel a stored token
+    belongs to before uploading.
+  </li>
+  <li>
+    <strong>The video ID and privacy status</strong> returned after each upload,
+    so the tool can report accurately whether the video was published as
+    requested.
+  </li>
+</ul>
+
+<h2>3. Data the tool does not handle</h2>
+<ul>
+  <li>No YouTube analytics or revenue data is requested or stored.</li>
+  <li>No data about other YouTube users, viewers, or creators is collected.</li>
+  <li>No YouTube content belonging to anyone else is retrieved.</li>
+  <li>No data is sold, shared, or transmitted to any third party.</li>
+  <li>No advertising, tracking, profiling, or analytics of any kind is performed.</li>
+</ul>
+
+<h2>4. Use of YouTube API Services</h2>
+<p>
+  mediaaut uses YouTube API Services. By using it, the operator agrees to be
+  bound by the
+  <a href="https://www.youtube.com/t/terms">YouTube Terms of Service</a>.
+  Google's handling of data is described in the
+  <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.
+</p>
+<p>
+  The operator may revoke mediaaut's access to their Google account at any time
+  via the
+  <a href="https://myaccount.google.com/permissions">Google security settings
+  page</a>. Doing so immediately invalidates the stored tokens.
+</p>
+
+<h2>5. Retention and deletion</h2>
+<p>
+  Stored tokens remain on the local machine until the operator deletes them or
+  revokes access through Google. Deleting the token file, or the mediaaut
+  directory, removes every piece of data the tool retains. There is no remote
+  copy to request deletion of, because no data ever leaves the local machine
+  except API calls made directly to Google.
+</p>
+
+<h2>6. Scopes requested</h2>
+<ul>
+  <li>
+    <code>youtube.upload</code> &mdash; required to upload videos to the
+    operator's own channel.
+  </li>
+  <li>
+    <code>youtube.readonly</code> &mdash; used only to confirm which channel the
+    token belongs to, and to read back the privacy status of a video the tool
+    has just uploaded.
+  </li>
+</ul>
+<p>
+  No other scope is requested. In particular, no scope granting access to
+  analytics, monetisation, or account management is used.
+</p>
+
+<h2>7. Synthetic content</h2>
+<p>
+  Narration is produced by a text-to-speech model. Every upload sets
+  <code>status.containsSyntheticMedia</code> to <code>true</code>, applying
+  YouTube's altered-or-synthetic-content disclosure automatically.
+</p>
+
+<h2>8. Changes to this policy</h2>
+<p>
+  Any change is published on this page with an updated date at the top.
+</p>
+
+<h2>9. Contact</h2>
+<p>
+  Questions about this policy can be sent to the address listed on the
+  <a href="index.html">project page</a>.
+</p>
+
+<footer>
+  <p><a href="index.html">Back to project page</a></p>
+</footer>
+
+</div>
+</body>
+</html>

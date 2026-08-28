@@ -19,7 +19,7 @@ from mediaaut.core.logging import get_logger, step
 from mediaaut.core.paths import job_dir
 from mediaaut.publish.base import VideoMeta
 from mediaaut.render.compose import Clip, plan_clips, render_short
-from mediaaut.render.templates import Template, get_template, pick_template
+from mediaaut.render.templates import Template, get_template, pick_from, pick_template
 from mediaaut.subtitles.ass_writer import write_ass
 from mediaaut.subtitles.transcribe import align_to_script, transcribe
 from mediaaut.voice.base import get_provider
@@ -74,14 +74,18 @@ def make_short(
         if template_name
         else pick_template(channel.render.templates, seed=job_id)
     )
-    step("job", id=job_id, chaine=channel_id, template=template.name)
+    # Le sel decorrele le tirage de la voix de celui du template : sans lui
+    # les deux changeraient ensemble et la chaine n'aurait que deux visages
+    # au lieu de quatre.
+    voice_id = pick_from(channel.voice.voices(), seed=job_id, salt="voice")
+    step("job", id=job_id, chaine=channel_id, template=template.name, voix=voice_id)
 
     # 1. Voix ------------------------------------------------------------
     start = time.perf_counter()
     voice = get_provider(channel.voice.provider).synthesize(
         script,
         job / "voice.wav",
-        voice_id=channel.voice.voice_id,
+        voice_id=voice_id,
         speed=channel.voice.speed,
         lang=channel.language,
     )

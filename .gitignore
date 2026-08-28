@@ -7,6 +7,8 @@ data/out/
 data/cache/
 data/models/
 data/assets/
+!data/assets/voices/
+!data/assets/voices/*.wav
 data/*.sqlite
 data/*.sqlite-*
 secrets/

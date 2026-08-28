@@ -81,3 +81,18 @@ def pick_template(candidates: list[str], seed: str) -> Template:
         raise ValueError("aucun template candidat")
     digest = hashlib.sha256(seed.encode("utf-8")).digest()
     return get_template(candidates[digest[0] % len(candidates)])
+
+
+def pick_from(candidates: list[str], seed: str, salt: str = "") -> str:
+    """Choisit un element de facon deterministe a partir d'une graine.
+
+    Meme principe que `pick_template` : rejouer un job donne le meme
+    resultat, mais deux jobs differents tirent differemment. `salt` permet
+    de decorreler deux tirages qui partagent la meme graine — sans lui, la
+    voix et le template changeraient toujours ensemble, ce qui reduirait la
+    variation reelle a deux combinaisons au lieu de quatre.
+    """
+    if not candidates:
+        raise ValueError("aucun candidat")
+    digest = hashlib.sha256(f"{salt}:{seed}".encode()).digest()
+    return candidates[digest[0] % len(candidates)]

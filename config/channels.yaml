@@ -20,6 +20,10 @@ defaults:
     provider: chatterbox
     voice_id: default
     speed: 1.0
+    # Voix alternees d'une video a l'autre. Les entrees designent des
+    # echantillons de data/assets/voices/ ; « default » est la voix native
+    # de Chatterbox.
+    rotation: [default, am_michael, am_onyx, bm_george]
   # Vocabulaire visuel de la chaine. Les requetes que le modele invente
   # derivent vers le litteral : « hidden cost » ramene des billets de banque,
   # « asynchronous processing » ramene une plage. Ces requetes-ci sont

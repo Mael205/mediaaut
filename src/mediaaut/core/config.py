@@ -70,8 +70,16 @@ class RenderConfig(BaseModel):
 
 class VoiceConfig(BaseModel):
     provider: Literal["kokoro", "chatterbox", "edge"] = "chatterbox"
-    voice_id: str = "am_michael"
+    voice_id: str = "default"
     speed: float = 1.0
+    # Voix alternees d'une video a l'autre, comme les templates. La variation
+    # de voix compte autant que la variation visuelle pour ne pas ressembler
+    # a une chaine produite en serie ; et elle laisse tester quelle voix
+    # retient le mieux.
+    rotation: list[str] = Field(default_factory=list)
+
+    def voices(self) -> list[str]:
+        return self.rotation or [self.voice_id]
 
 
 class SubtitleConfig(BaseModel):

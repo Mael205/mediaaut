@@ -22,6 +22,7 @@ from mediaaut.longform.compose import build_chapters, concat_sections, render_se
 from mediaaut.longform.models import SectionScript, VideoBrief
 from mediaaut.longform.writer import write_long
 from mediaaut.publish.base import VideoMeta
+from mediaaut.render.templates import pick_from
 from mediaaut.voice.base import get_provider
 
 log = get_logger(__name__)
@@ -72,7 +73,11 @@ def make_long(
     job_id = f"long-{channel_id}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
     job = job_dir(job_id)
 
-    step("sujet", titre=topic, duree=f"{minutes:.0f}min")
+    # Une seule voix pour toute la video : en changer d'une section a
+    # l'autre s'entendrait comme un defaut, la ou entre deux videos c'est
+    # de la variation.
+    voice_id = pick_from(channel.voice.voices(), seed=job_id, salt="voice")
+    step("sujet", titre=topic, duree=f"{minutes:.0f}min", voix=voice_id)
     brief, section_plans, scripts = write_long(channel, topic, minutes=minutes)
 
     voice = get_provider(channel.voice.provider)
@@ -94,7 +99,7 @@ def make_long(
         result = voice.synthesize(
             script.narration,
             job / f"section-{index:02d}.wav",
-            voice_id=channel.voice.voice_id,
+            voice_id=voice_id,
             speed=channel.voice.speed,
             lang=channel.language,
         )

@@ -1,115 +1,90 @@
 # Instagram Reels — mise en service
 
-Environ 20 minutes, **sans aucune revue d'application**. La revue de Meta ne
+Environ 15 minutes, **sans aucune revue d'application**. La revue de Meta ne
 concerne que les comptes qu'on ne possède pas ; publier sur son propre compte
 depuis une application en mode Développement ne la déclenche pas.
 
-À la fin, `mediaaut publish <job> -p instagram` publiera un Reel public
-automatiquement, sans geste manuel.
+Meta propose deux parcours. Ce guide suit **« API setup with Instagram login »**,
+qui ne demande **pas de Page Facebook**. C'est le plus court, et le défaut du
+code (`IG_LOGIN_FLOW=instagram` dans `.env`).
 
 ---
 
 ## 1. Compte Instagram professionnel
 
-Le compte doit être **Professionnel** (Business ou Créateur). Un compte
+Le compte doit être **Professionnel** (Business ou Créateur) : un compte
 personnel ne peut pas publier par API.
 
-Sur l'application Instagram : **Paramètres → Compte → Passer à un compte
-professionnel**. Choisis Créateur ou Entreprise, peu importe.
+Application Instagram → **Paramètres → Compte → Passer à un compte professionnel**.
 
-⚠️ **Utilise un compte dédié**, pas ton compte personnel — même raisonnement que
+⚠️ Utilise un **compte dédié**, pas ton compte personnel — même raisonnement que
 pour la chaîne YouTube : isoler le risque.
 
-## 2. Page Facebook liée
-
-L'API passe par le graphe Facebook, donc le compte Instagram doit être relié à
-une Page Facebook.
-
-1. [facebook.com/pages/create](https://www.facebook.com/pages/create) — crée une
-   Page (nom libre, aucune publication nécessaire)
-2. Sur Instagram : **Paramètres → Partage sur d'autres applications → Facebook**,
-   et relie la Page
-
-## 3. Application Meta
+## 2. Application Meta
 
 1. [developers.facebook.com/apps](https://developers.facebook.com/apps) →
    **Créer une application**
 2. Cas d'usage : **Autre** → type **Entreprise**
-3. Nom : `mediaaut`
-4. Dans le tableau de bord, ajoute le produit **Instagram** →
-   **Configurer l'API avec Facebook Login**
+3. Ajoute le produit **Instagram** → **API setup with Instagram login**
 
 L'application **reste en mode Développement**. C'est voulu : c'est ce qui évite
 la revue.
 
-## 4. Rôle Instagram Tester
+Note au passage l'**ID d'app** et la **clé secrète** (bouton « Afficher ») —
+ils serviront à l'étape 4.
 
-C'est l'étape qui débloque tout, et celle qu'on oublie.
+## 3. Rôle Testeur Instagram
 
-1. Dans l'application : **Rôles de l'application → Rôles → Ajouter des
-   personnes** → **Testeur Instagram** → saisis ton pseudo Instagram
-2. Puis **accepte l'invitation** côté Instagram :
+C'est l'étape qu'on rate, et elle bloque tout le reste.
+
+1. Onglet **Rôles** → **Testeur Instagram** (pas « Testeur » tout court, qui est
+   un rôle sur l'application Facebook et n'accorde aucun accès au compte) →
+   saisis ton pseudo Instagram
+2. Le statut affiche **« en attente »**. C'est normal : l'acceptation se fait
+   côté Instagram.
+3. Connecte-toi sur Instagram **avec le compte invité**, puis
    [instagram.com/accounts/manage_access_tools](https://www.instagram.com/accounts/manage_access_tools/)
-   → **Invitations de testeur** → Accepter
+   → **Invitations de testeur** → **Accepter**
+4. Rafraîchis la page Meta : le statut doit passer à **« Actif »**
 
-Sans cette acceptation, tous les appels renvoient une erreur de permission.
+## 4. Jeton d'accès
 
-## 5. Jeton d'accès
-
-1. [developers.facebook.com/tools/explorer](https://developers.facebook.com/tools/explorer/)
-2. Application : `mediaaut`
-3. **Générer un jeton d'accès utilisateur**, avec ces permissions :
-   - `instagram_basic`
-   - `instagram_content_publish`
-   - `pages_show_list`
-   - `pages_read_engagement`
-   - `business_management`
-4. Copie le jeton
+Dans **« 1. Générez des tokens d'accès »** → **Ajouter un compte** → autorise.
+Tu obtiens un jeton.
 
 ### Le convertir en jeton longue durée
 
-Le jeton de l'explorateur expire en **1 heure**. Il faut l'échanger contre un
-jeton de 60 jours :
+Le jeton initial est court. L'échanger contre un jeton de **60 jours** :
 
 ```powershell
-$SHORT = "colle_le_jeton_court_ici"
-$APPID = "ton_app_id"
-$SECRET = "ton_app_secret"   # Paramètres → Général → Clé secrète
-
-curl "https://graph.facebook.com/v23.0/oauth/access_token?grant_type=fb_exchange_token&client_id=$APPID&client_secret=$SECRET&fb_exchange_token=$SHORT"
+curl "https://graph.instagram.com/access_token?grant_type=ig_exchange_token&client_secret=TA_CLE_SECRETE&access_token=TON_JETON_COURT"
 ```
 
-Le champ `access_token` de la réponse est ton jeton longue durée.
+Le champ `access_token` de la réponse est celui à garder.
 
-## 6. Identifiant du compte Instagram
-
-Ce n'est pas ton pseudo, c'est un identifiant numérique.
+## 5. Identifiant du compte
 
 ```powershell
-# 1. Trouver l'identifiant de la Page
-curl "https://graph.facebook.com/v23.0/me/accounts?access_token=TON_JETON_LONG"
-
-# 2. En déduire l'identifiant du compte Instagram lié
-curl "https://graph.facebook.com/v23.0/PAGE_ID?fields=instagram_business_account&access_token=TON_JETON_LONG"
+curl "https://graph.instagram.com/v23.0/me?fields=id,username&access_token=TON_JETON_LONG"
 ```
 
-Le champ `instagram_business_account.id` est ton `IG_USER_ID`.
+Le champ `id` est ton `IG_USER_ID` (un nombre, pas ton pseudo).
 
-## 7. Renseigner `.env`
+## 6. Renseigner `.env`
 
 ```
+IG_LOGIN_FLOW=instagram
 IG_USER_ID=17841400000000000
-IG_ACCESS_TOKEN=EAAG...
+IG_ACCESS_TOKEN=IGAA...
 ```
 
-## 8. Vérifier
+## 7. Vérifier
 
 ```powershell
 .venv\Scripts\mediaaut doctor
 ```
 
-La ligne `instagram` doit afficher `@ton_pseudo`. Puis, sur une vidéo déjà
-rendue :
+La ligne `instagram` doit afficher `@ton_pseudo`. Puis, sur une vidéo rendue :
 
 ```powershell
 .venv\Scripts\mediaaut publish <job-id> -p instagram
@@ -117,23 +92,36 @@ rendue :
 
 ---
 
+## Ce que tu ne remplis pas
+
+| Section de la page Meta | Pourquoi |
+|---|---|
+| **Webhooks** | Sert à *recevoir* des événements (commentaires, messages). Tu ne fais que publier. |
+| **Connexion professionnelle** | Sert à faire autoriser ton app par d'autres entreprises. |
+| **Contrôle app** | C'est l'App Review. Inutile pour ton propre compte — c'est tout l'intérêt du mode Développement. |
+
 ## Limites à connaître
 
 | | |
 |---|---|
-| Publications par API | **25 à 100 par 24 h** selon le compte — très au-dessus de tes besoins |
+| Publications par API | 25 à 100 par 24 h selon le compte — très au-dessus de tes besoins |
 | Durée d'un Reel | 5 à 90 secondes |
 | Format | 9:16, H.264 ou HEVC, AAC — c'est déjà ce que produit le pipeline |
 | Expiration du jeton | **60 jours.** À régénérer, sinon la publication s'arrête sans prévenir |
 
-Le jeton qui expire silencieusement est le piège principal. `mediaaut doctor`
-le détecte : si la ligne `instagram` passe au rouge avec un code 190, c'est ça.
+Le jeton qui expire en silence est le piège principal. `mediaaut doctor` le
+détecte : ligne `instagram` en rouge avec un code 190.
 
 ## Si ça échoue
 
 | Message | Cause |
 |---|---|
 | `190` | Jeton expiré ou révoqué → en régénérer un |
-| `10` | Permission manquante, ou invitation Testeur non acceptée (étape 4) |
-| `100` | Compte non professionnel, ou Page Facebook non liée |
+| `10` | Invitation Testeur non acceptée (étape 3), ou permission manquante |
+| `100` | Compte non professionnel, ou mauvais `IG_USER_ID` |
 | `4` | Limite de fréquence atteinte |
+
+Si les appels échouent sans raison claire, vérifie `IG_LOGIN_FLOW` : le parcours
+Instagram Login et le parcours Facebook Login n'utilisent pas le même hôte, et
+se tromper donne une erreur d'autorisation qui n'indique jamais que l'URL est
+en cause.

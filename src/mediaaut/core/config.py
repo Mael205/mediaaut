@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     youtube_client_secrets: str = "secrets/youtube_client_secret.json"
     ig_user_id: str | None = None
     ig_access_token: str | None = None
+    # « instagram » : parcours Instagram Login, sans Page Facebook.
+    # « facebook » : parcours Facebook Login, avec Page liee.
+    ig_login_flow: Literal["instagram", "facebook"] = "instagram"
     tiktok_client_key: str | None = None
     tiktok_client_secret: str | None = None
 
@@ -90,6 +93,9 @@ class ChannelConfig(BaseModel):
     angle: str = ""
     enabled: bool = True
     platforms: list[str] = Field(default_factory=list)
+    # Requetes de b-roll curatees, toujours coherentes avec la chaine. Elles
+    # priment sur celles que le modele propose, qui derivent vers le litteral.
+    broll_vocabulary: list[str] = Field(default_factory=list)
     render: RenderConfig = Field(default_factory=RenderConfig)
     voice: VoiceConfig = Field(default_factory=VoiceConfig)
     subtitles: SubtitleConfig = Field(default_factory=SubtitleConfig)

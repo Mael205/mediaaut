@@ -16,6 +16,20 @@ defaults:
   voice:
     provider: kokoro
     speed: 1.0
+  # Vocabulaire visuel de la chaine. Les requetes que le modele invente
+  # derivent vers le litteral : « hidden cost » ramene des billets de banque,
+  # « asynchronous processing » ramene une plage. Ces requetes-ci sont
+  # curatees une fois et donnent une base d'images toujours coherente ; celles
+  # du modele ne viennent qu'en complement.
+  broll_vocabulary:
+    - code on computer screen
+    - server room racks
+    - developer typing keyboard
+    - data center corridor
+    - terminal window closeup
+    - circuit board macro
+    - network cables closeup
+    - person working laptop night
   subtitles:
     max_chars_per_cue: 22
     highlight: true          # karaoke mot par mot

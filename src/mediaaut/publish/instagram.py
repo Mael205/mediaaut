@@ -10,8 +10,7 @@ La publication se fait en trois temps, imposes par l'API :
 1. creation d'un conteneur, en demandant explicitement `upload_type=resumable`
    pour pouvoir envoyer un fichier local. Sans cela l'API exige une URL
    publique, ce qui obligerait a heberger les videos quelque part ;
-2. envoi du binaire sur `rupload.facebook.com`, un hote distinct du reste de
-   l'API ;
+2. envoi du binaire sur l'hote `rupload.*`, distinct du reste de l'API ;
 3. attente de la fin du transcodage, puis publication. L'etape d'attente n'est
    pas optionnelle : publier un conteneur encore en cours echoue.
 """
@@ -30,8 +29,22 @@ from mediaaut.publish.base import PublishResult, VideoMeta, truncate
 log = get_logger(__name__)
 
 API_VERSION = "v23.0"
-GRAPH = f"https://graph.facebook.com/{API_VERSION}"
-RUPLOAD = f"https://rupload.facebook.com/ig-api-upload/{API_VERSION}"
+
+# Meta propose deux parcours, et ils ne parlent pas au meme hote.
+#
+# - « Instagram API with Instagram login » : pas de Page Facebook requise,
+#   tout passe par graph.instagram.com. C'est le plus court a mettre en
+#   service, donc le defaut ici.
+# - « Instagram API with Facebook login » : exige une Page Facebook liee et
+#   passe par graph.facebook.com. Necessaire seulement pour les hashtags et
+#   les statistiques, dont ce projet n'a pas besoin.
+#
+# `IG_LOGIN_FLOW` bascule de l'un a l'autre. Se tromper d'hote donne une
+# erreur d'autorisation qui n'indique nulle part que le probleme est l'URL.
+_HOSTS = {
+    "instagram": ("https://graph.instagram.com", "https://rupload.instagram.com"),
+    "facebook": ("https://graph.facebook.com", "https://rupload.facebook.com"),
+}
 
 CAPTION_LIMIT = 2200
 # Instagram compte les hashtags de la legende ; au-dela de 30 le post est refuse.
@@ -51,13 +64,17 @@ class InstagramPublisher:
         self.user_id = settings.ig_user_id
         self.token = settings.ig_access_token
 
+        graph_host, upload_host = _HOSTS[settings.ig_login_flow]
+        self.graph = f"{graph_host}/{API_VERSION}"
+        self.rupload = f"{upload_host}/ig-api-upload/{API_VERSION}"
+
     # -- authentification ------------------------------------------------
     def check_auth(self) -> tuple[bool, str]:
         if not self.user_id or not self.token:
             return False, "IG_USER_ID ou IG_ACCESS_TOKEN absent de .env"
         try:
             response = httpx.get(
-                f"{GRAPH}/{self.user_id}",
+                f"{self.graph}/{self.user_id}",
                 params={"fields": "username,media_count", "access_token": self.token},
                 timeout=20,
             )
@@ -80,7 +97,7 @@ class InstagramPublisher:
 
     def _create_container(self, meta: VideoMeta) -> str:
         response = httpx.post(
-            f"{GRAPH}/{self.user_id}/media",
+            f"{self.graph}/{self.user_id}/media",
             data={
                 "media_type": "REELS",
                 "upload_type": "resumable",
@@ -101,7 +118,7 @@ class InstagramPublisher:
         size = video.stat().st_size
         log.info("envoi du binaire (%.1f Mo)", size / 1e6)
         response = httpx.post(
-            f"{RUPLOAD}/{container_id}",
+            f"{self.rupload}/{container_id}",
             headers={
                 "Authorization": f"OAuth {self.token}",
                 "offset": "0",
@@ -119,7 +136,7 @@ class InstagramPublisher:
         deadline = time.monotonic() + _POLL_TIMEOUT
         while time.monotonic() < deadline:
             response = httpx.get(
-                f"{GRAPH}/{container_id}",
+                f"{self.graph}/{container_id}",
                 params={"fields": "status_code,status", "access_token": self.token},
                 timeout=30,
             )
@@ -149,7 +166,7 @@ class InstagramPublisher:
             self._wait_ready(container_id)
 
             response = httpx.post(
-                f"{GRAPH}/{self.user_id}/media_publish",
+                f"{self.graph}/{self.user_id}/media_publish",
                 data={"creation_id": container_id, "access_token": self.token},
                 timeout=120,
             )

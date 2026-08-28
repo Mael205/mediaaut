@@ -99,7 +99,10 @@ def make_long(
             lang=channel.language,
         )
 
-        clips = _fetch_broll(script, result.duration, plan_section.title)
+        clips = _fetch_broll(
+            script, result.duration, plan_section.title,
+            vocabulary=channel.broll_vocabulary, index=index,
+        )
         if first_clip is None and clips:
             first_clip = clips[0]
         words = None
@@ -173,7 +176,14 @@ def make_long(
     return result
 
 
-def _fetch_broll(script: SectionScript, duration: float, title: str = "") -> list[Path]:
+def _fetch_broll(
+    script: SectionScript,
+    duration: float,
+    title: str = "",
+    *,
+    vocabulary: list[str] | None = None,
+    index: int = 1,
+) -> list[Path]:
     """Recupere le b-roll d'une section, sans faire echouer le rendu.
 
     Une section sans image tombe sur le degrade anime ; une section qui
@@ -194,6 +204,13 @@ def _fetch_broll(script: SectionScript, duration: float, title: str = "") -> lis
         q.strip() for q in script.broll_queries
         if q.strip() and not q.strip().endswith("?") and len(q.split()) <= 5
     ]
+    # Le vocabulaire de la chaine passe en tete : il garantit une base
+    # d'images coherentes quoi que le modele ait propose. La rotation par
+    # numero de section evite que toutes les sections montrent les memes plans.
+    if vocabulary:
+        rotated = vocabulary[(index - 1) * 2 % len(vocabulary):] + vocabulary
+        queries = rotated[:2] + queries
+
     if not queries and title:
         log.warning("aucune requete de b-roll exploitable, repli sur « %s »", title)
         # Le titre est ramene a quatre mots : au-dela, une banque de video

@@ -48,7 +48,7 @@ Puis verifier :
 .venv\Scripts\mediaaut make ai-builders-en -f script.txt -t split_top -b clip1.mp4 -b clip2.mp4
 
 # b-roll cherche automatiquement en banque (necessite PEXELS_API_KEY)
-.venv\Scripts\mediaaut make ai-builders-en -f script.txt -q "developer coding" -q "server room"     --title "Automate the right half" --tag ai --tag automation
+.venv\Scripts\mediaaut make ai-builders-en -f script.txt -q "developer coding" -q "server room" --title "Automate the right half" --tag ai --tag automation
 
 # autoriser YouTube une fois, puis publier
 .venv\Scripts\mediaaut auth youtube

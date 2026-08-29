@@ -1,0 +1,667 @@
+<title>mediaaut</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@100..125,600..900&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* Monde assume : la suite d'etalonnage, lumieres baissees. Le sombre n'est
+     pas suivi du navigateur mais choisi — un developpeur evalue cet outil le
+     soir, devant sa propre machine. Toute couleur est donc peinte
+     explicitement, pour que la page tienne sur n'importe quel fond hote.
+
+     Palette en OKLCH : clarte et chroma s'y ajustent sans deriver de teinte. */
+  :root {
+    --canvas:    oklch(0.165 0.018 252);
+    --surface:   oklch(0.213 0.020 252);
+    --raised:    oklch(0.252 0.022 252);
+    --ink:       oklch(0.958 0.008 250);
+    --ink-2:     oklch(0.735 0.021 250);
+    --rule:      oklch(0.318 0.023 252);
+    --signal:    oklch(0.785 0.155 72);
+    --on-signal: oklch(0.19 0.03 60);
+    --measure:   oklch(0.80 0.105 192);
+    --shade:     oklch(0.06 0.02 250 / .55);
+
+    --display: "Anybody", "Arial Narrow", sans-serif;
+    --text:    "Public Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --data:    "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+    --col:  70rem;
+    --gap:  clamp(4rem, 8vw, 7rem);
+    --out:  cubic-bezier(.16, 1, .3, 1);
+
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  /* Surfaces du navigateur : livrees par defaut, elles n'appartiennent a
+     aucun systeme de design. */
+  ::selection { background: var(--signal); color: var(--on-signal); }
+  :root { scrollbar-color: var(--rule) transparent; caret-color: var(--signal); }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 99px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; border-radius: 2px; }
+  a { color: inherit; text-underline-offset: .22em; text-decoration-thickness: 1px; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--text);
+    font-size: 1.0625rem;
+    line-height: 1.66;
+    letter-spacing: .004em;   /* compense la diffusion du texte clair sur sombre */
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Fond vivant : un oscilloscope au ralenti, dessine au canvas. C'est ce que
+     le produit fabrique — une onde et une image — et non un decor generique. */
+  #ambient {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    z-index: 0; pointer-events: none;
+  }
+  .wrap { position: relative; z-index: 1; max-width: var(--col); margin: 0 auto; padding: 0 1.5rem; }
+
+  h1, h2, h3 {
+    font-family: var(--display);
+    margin: 0; text-wrap: balance; line-height: 1.02;
+    font-variation-settings: "wdth" 112;
+  }
+  h1 { font-size: clamp(2.7rem, 6.4vw, 5rem); font-weight: 800; letter-spacing: -.035em; }
+  h2 { font-size: clamp(2rem, 3.8vw, 3rem); font-weight: 800; letter-spacing: -.03em; }
+  h3 { font-size: 1.1rem; font-weight: 700; letter-spacing: -.012em; font-variation-settings: "wdth" 105; }
+  p { margin: 0; }
+
+  .lede  { font-size: clamp(1.12rem, 1.9vw, 1.32rem); color: var(--ink-2); max-width: 42ch; }
+  .prose { max-width: 68ch; color: var(--ink-2); }
+
+  section { padding-block: var(--gap); border-top: 1px solid var(--rule); }
+  section:first-of-type { border-top: 0; padding-top: 3rem; }
+  .stack { display: flex; flex-direction: column; gap: 1.6rem; }
+  .stack-tight { display: flex; flex-direction: column; gap: .55rem; }
+
+  /* Le monospace ne sert qu'a des valeurs mesurees, jamais comme costume. */
+  .m { font-family: var(--data); font-variant-numeric: tabular-nums; color: var(--measure); }
+
+  /* -- en-tete ----------------------------------------------------------- */
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-block: 1.4rem; }
+  .mark { display: flex; align-items: center; gap: .6rem; font-family: var(--display); font-weight: 800; font-size: 1.1rem; letter-spacing: -.03em; font-variation-settings: "wdth" 108; }
+  .mark svg { display: block; color: var(--signal); }
+  .top nav { display: flex; gap: 1.6rem; font-size: .93rem; color: var(--ink-2); }
+  .top nav a { text-decoration: none; transition: color .2s var(--out); }
+  .top nav a:hover { color: var(--ink); text-decoration: underline; }
+  @media (max-width: 36rem) { .top nav { display: none; } }
+
+  /* -- accroche ---------------------------------------------------------- */
+  .hero { display: grid; gap: 3rem; align-items: start; }
+  @media (min-width: 62rem) { .hero { grid-template-columns: 1.02fr .98fr; gap: 4.5rem; } }
+
+  .actions { display: flex; flex-wrap: wrap; gap: .8rem; align-items: center; }
+  .btn {
+    font-family: var(--text); font-size: 1rem; font-weight: 600;
+    padding: .82rem 1.35rem; border-radius: 3px; border: 1px solid transparent;
+    text-decoration: none; display: inline-flex; align-items: center; gap: .5rem;
+    cursor: pointer;
+    transition: background .25s var(--out), border-color .25s var(--out), transform .25s var(--out), box-shadow .25s var(--out);
+  }
+  .btn-solid { background: var(--signal); color: var(--on-signal); }
+  .btn-solid:hover { transform: translateY(-2px); box-shadow: 0 8px 24px -10px var(--signal); }
+  .btn-line { border-color: var(--rule); color: var(--ink); background: transparent; }
+  .btn-line:hover { border-color: var(--signal); color: var(--signal); }
+  .btn svg { flex: none; transition: transform .3s var(--out); }
+  .btn-solid:hover svg { transform: translateX(3px); }
+  .btn[disabled] { opacity: .55; cursor: default; transform: none; box-shadow: none; }
+
+  /* -- journal de rendu : la region que l'accent possede ------------------ */
+  .scope {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--surface);
+    box-shadow: 0 2px 4px var(--shade), 0 28px 56px -30px var(--shade);
+    overflow: hidden;
+  }
+  .scope-top {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .7rem .95rem; border-bottom: 1px solid var(--rule); background: var(--raised);
+    font-family: var(--data); font-size: .74rem; color: var(--ink-2);
+  }
+  .live { width: .45rem; height: .45rem; border-radius: 50%; background: var(--signal); flex: none; box-shadow: 0 0 0 0 var(--signal); }
+  .scope-rows { padding: .5rem .3rem; display: flex; flex-direction: column; }
+  .row {
+    display: grid; grid-template-columns: 3.6rem 1fr auto; gap: .8rem;
+    align-items: baseline; padding: .42rem .65rem;
+    font-family: var(--data); font-size: .8rem;
+    border-left: 1px solid transparent;
+    transition: background .45s var(--out), border-color .45s var(--out);
+  }
+  .row .at   { color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  .row .what { font-family: var(--text); font-size: .89rem; color: var(--ink); }
+  .row .took { color: var(--measure); font-variant-numeric: tabular-nums; }
+  .row.active { border-left-color: var(--signal); background: color-mix(in oklch, var(--signal) 11%, transparent); }
+  .scope-bottom {
+    border-top: 1px solid var(--rule); background: var(--raised);
+    padding: .75rem .95rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    font-size: .8rem; color: var(--ink-2);
+  }
+  .scope-bottom b { color: var(--ink); font-family: var(--data); font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  /* -- tableaux ---------------------------------------------------------- */
+  .scroll-x { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; min-width: 36rem; }
+  th, td { text-align: left; padding: .95rem 1.1rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  thead th { font-size: .9rem; font-weight: 600; color: var(--ink-2); }
+  tbody th { font-weight: 500; color: var(--ink); font-size: .95rem; }
+  td { color: var(--ink-2); font-size: .95rem; }
+  tbody tr { transition: background .25s var(--out); }
+  tbody tr:hover { background: color-mix(in oklch, var(--ink) 4%, transparent); }
+  .mine { background: color-mix(in oklch, var(--signal) 10%, transparent); color: var(--ink); font-weight: 500; }
+  thead .mine { color: var(--ink); font-weight: 700; }
+
+  /* -- la chaine, comme une chaine et non comme des cartes ---------------- */
+  .chain { display: flex; flex-direction: column; }
+  .link {
+    display: grid; gap: .3rem 1.4rem; padding: 1.5rem 0;
+    border-top: 1px solid var(--rule);
+    grid-template-columns: 2.6rem 1fr;
+    position: relative;
+  }
+  /* Le filet qui se trace a l'arrivee : la chaine se relie, elle n'apparait
+     pas. C'est le meme geste que le contenu de la section. */
+  .link::before {
+    content: ""; position: absolute; top: -1px; left: 0; height: 1px;
+    width: 0; background: var(--signal); transition: width .9s var(--out);
+  }
+  .link.seen::before { width: 100%; }
+  @media (min-width: 54rem) { .link { grid-template-columns: 2.6rem 15rem 1fr; align-items: start; } }
+  .link:first-child { border-top: 0; }
+  .link:first-child::before { display: none; }
+  .link .n { font-family: var(--data); font-size: .78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; padding-top: .28rem; }
+  .link h3 { grid-column: 2; }
+  .link p { grid-column: 2; color: var(--ink-2); font-size: .95rem; max-width: 60ch; }
+  @media (min-width: 54rem) {
+    .link h3 { grid-column: 2; grid-row: 1; }
+    .link p  { grid-column: 3; grid-row: 1; }
+  }
+
+  /* -- tarifs ------------------------------------------------------------ */
+  .price-head { font-family: var(--display); font-weight: 800; font-size: 2rem; letter-spacing: -.03em; font-variant-numeric: tabular-nums; font-variation-settings: "wdth" 108; }
+  .price-head small { font-family: var(--text); font-size: .82rem; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+  .yes, .no { display: inline-flex; }
+  .yes { color: var(--measure); }
+  .no  { color: var(--ink-2); opacity: .45; }
+
+  /* -- demande ----------------------------------------------------------- */
+  .demand {
+    border: 1px solid var(--rule); border-radius: 4px; background: var(--surface);
+    padding: 1.9rem; display: flex; flex-wrap: wrap; gap: 1.6rem;
+    align-items: center; justify-content: space-between;
+    box-shadow: 0 2px 4px var(--shade), 0 24px 48px -32px var(--shade);
+  }
+  .count { font-family: var(--display); font-weight: 900; font-size: 3rem; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; font-variation-settings: "wdth" 100; }
+  .count-label { color: var(--ink-2); font-size: .95rem; }
+  .quiet { font-size: .85rem; color: var(--ink-2); }
+
+  /* -- questions --------------------------------------------------------- */
+  details { border-top: 1px solid var(--rule); padding: 1.15rem 0; }
+  details:last-of-type { border-bottom: 1px solid var(--rule); }
+  summary { cursor: pointer; font-weight: 600; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 1rem; transition: color .2s var(--out); }
+  summary:hover { color: var(--signal); }
+  summary::-webkit-details-marker { display: none; }
+  summary svg { flex: none; color: var(--ink-2); transition: transform .4s var(--out), color .2s var(--out); }
+  summary:hover svg { color: var(--signal); }
+  details[open] summary svg { transform: rotate(135deg); }
+  details p { margin-top: .75rem; color: var(--ink-2); max-width: 68ch; font-size: .96rem; }
+
+  footer {
+    border-top: 1px solid var(--rule); padding-block: 2.4rem 3.5rem;
+    color: var(--ink-2); font-size: .88rem;
+    display: flex; flex-wrap: wrap; gap: 1rem; justify-content: space-between;
+  }
+
+  /* ---- couche de mouvement -------------------------------------------
+     Elle n'existe que si le script a tourne : sans lui, `.js` est absente
+     et tout reste visible. Une animation ne doit jamais etre la condition
+     pour que le contenu s'affiche. */
+  .js .enter { opacity: 0; transform: translateY(14px); }
+  .js .enter.seen { opacity: 1; transform: none; transition: opacity .8s var(--out), transform .8s var(--out); }
+  .js .lift  { opacity: 0; transform: translateY(22px) scale(.995); }
+  .js .lift.seen { opacity: 1; transform: none; transition: opacity 1s var(--out), transform 1s var(--out); }
+
+  .js .live { animation: beat 2.4s ease-in-out infinite; }
+  @keyframes beat {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--signal) 60%, transparent); }
+    70%      { box-shadow: 0 0 0 7px transparent; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .js .enter, .js .lift { opacity: 1 !important; transform: none !important; }
+    .js .live { animation: none; }
+    * { transition-duration: .01ms !important; }
+  }
+</style>
+
+<canvas id="ambient" aria-hidden="true"></canvas>
+
+<div class="wrap">
+
+  <header class="top">
+    <div class="mark">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <rect x="1.75" y="4.25" width="16.5" height="11.5" rx="1.5"/>
+        <path d="M1.75 8h16.5M1.75 12h16.5M6 4.5v11M14 4.5v11"/>
+      </svg>
+      mediaaut
+    </div>
+    <nav>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#cost">Cost</a>
+      <a href="#pricing">Pricing</a>
+    </nav>
+  </header>
+
+  <section>
+    <div class="hero">
+      <div class="stack">
+        <h1 class="enter" data-delay="0">Your GPU is already paid for. Stop renting one by the clip.</h1>
+        <p class="lede enter" data-delay="120">mediaaut writes, voices, subtitles, illustrates and publishes short and long-form video — entirely on your own machine. No credits. No queue. Nothing uploaded.</p>
+        <div class="actions enter" data-delay="220">
+          <a class="btn btn-solid" href="#pricing">
+            See pricing
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7.5h9M8.5 4l3.5 3.5L8.5 11"/></svg>
+          </a>
+          <a class="btn btn-line" href="#pipeline">How it runs</a>
+        </div>
+        <p class="quiet enter" data-delay="300">Windows &middot; NVIDIA GPU recommended &middot; ffmpeg</p>
+      </div>
+
+      <div class="scope lift" data-delay="380">
+        <div class="scope-top"><span class="live" aria-hidden="true"></span> render log &mdash; ai-builders-en</div>
+        <div class="scope-rows" id="log"></div>
+        <div class="scope-bottom">
+          <span>48.0 s vertical video, 87% illustrated</span>
+          <span>total <b>91.5 s</b> on one desktop GPU</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="cost">
+    <div class="stack">
+      <h2 class="enter">Metered tools charge per clip. Electricity doesn&rsquo;t.</h2>
+      <p class="prose enter" data-delay="80">Every hosted editor prices the thing you do most often. mediaaut runs the same pipeline locally, so the hundredth video of the month costs exactly what the first one did.</p>
+      <div class="scroll-x lift" data-delay="140">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">&nbsp;</th>
+              <th scope="col">Hosted, metered</th>
+              <th scope="col" class="mine">mediaaut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Cost of one more video</th><td>Credits from a monthly pool</td><td class="mine">Compute you already own</td></tr>
+            <tr><th scope="row">Where your footage goes</th><td>Uploaded to a third party</td><td class="mine">Never leaves the machine</td></tr>
+            <tr><th scope="row">Rendering</th><td>Shared queue at busy hours</td><td class="mine">Your GPU, immediately</td></tr>
+            <tr><th scope="row">If the service shuts down</th><td>The workflow goes with it</td><td class="mine">You still have the code</td></tr>
+            <tr><th scope="row">Voice</th><td>Billed per character</td><td class="mine">Local model, cloneable</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <div class="stack">
+      <h2 class="enter">Six stages, all offline.</h2>
+      <p class="prose enter" data-delay="80">They run in order, and each writes its output to disk — so a failure in the last one never costs you the first five.</p>
+      <div class="chain">
+        <div class="link">
+          <span class="n">1</span>
+          <h3>It writes the script</h3>
+          <p>A local model drafts to a measured word budget, because a script written without one produces a video twice its target length. Invented percentages and speed multipliers are stripped before they ever reach the voice.</p>
+        </div>
+        <div class="link">
+          <span class="n">2</span>
+          <h3>It speaks</h3>
+          <p>Voice cloned from a sample you provide, synthesised in sentence groups — never in one block, where autoregressive drift turns the last sentence to mush and nothing in the output signals it.</p>
+        </div>
+        <div class="link">
+          <span class="n">3</span>
+          <h3>It subtitles, word by word</h3>
+          <p>Whisper timestamps every word on the GPU. Type size is measured per font rather than derived from font metrics, which are wrong by <span class="m">15&ndash;30%</span>. That is why each cue fills the frame instead of floating in it.</p>
+        </div>
+        <div class="link">
+          <span class="n">4</span>
+          <h3>It illustrates what is said</h3>
+          <p>Visuals anchor to the spoken sentence instead of being dealt out in turn. Stock photos are ranked against that sentence by CLIP in <span class="m">154 MB</span> of quantised ONNX — with no PyTorch install anywhere.</p>
+        </div>
+        <div class="link">
+          <span class="n">5</span>
+          <h3>It renders</h3>
+          <p>ffmpeg with hardware encoding, subtitles burned during the encode: no browser, no frame-by-frame capture. Loudness lands at <span class="m">-14 LUFS</span>, where every platform normalises playback anyway.</p>
+        </div>
+        <div class="link">
+          <span class="n">6</span>
+          <h3>It publishes, then checks</h3>
+          <p>YouTube, Instagram and TikTok. It reads the platform back after upload rather than trusting the response, and paces posts so a burst never trips a spam filter.</p>
+        </div>
+      </div>
+      <p class="prose enter">Long-form too: 16:9, chaptered, with a generated thumbnail — plus a cutter that turns one long video into six verticals.</p>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="stack">
+      <h2 class="enter">Buy it once, or have it run for you.</h2>
+      <p class="prose enter" data-delay="80">No seats, no credits, no per-minute billing. The software runs on your hardware, so there is nothing for anyone to meter — which is why it costs less than one month of the tool it replaces.</p>
+      <div class="scroll-x lift" data-delay="140">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">&nbsp;</th>
+              <th scope="col"><span class="price-head">&euro;5 <small>once</small></span><br>Solo</th>
+              <th scope="col"><span class="price-head">&euro;19 <small>once</small></span><br>Studio</th>
+              <th scope="col" class="mine"><span class="price-head">&euro;99 <small>/ month</small></span><br>Done for you</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">Machines</th>
+              <td>One</td><td>Unlimited</td><td class="mine">Ours, not yours</td>
+            </tr>
+            <tr>
+              <th scope="row">Shorts and long-form</th>
+              <td><span class="yes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="included"><path d="M3 8.4l3.2 3.1L13 4.8"/></svg></span></td>
+              <td><span class="yes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="included"><path d="M3 8.4l3.2 3.1L13 4.8"/></svg></span></td>
+              <td class="mine"><span class="yes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="included"><path d="M3 8.4l3.2 3.1L13 4.8"/></svg></span></td>
+            </tr>
+            <tr>
+              <th scope="row">Commercial use for clients</th>
+              <td><span class="no"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" role="img" aria-label="not included"><path d="M4 8h8"/></svg></span></td>
+              <td><span class="yes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="included"><path d="M3 8.4l3.2 3.1L13 4.8"/></svg></span></td>
+              <td class="mine"><span class="yes"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="included"><path d="M3 8.4l3.2 3.1L13 4.8"/></svg></span></td>
+            </tr>
+            <tr>
+              <th scope="row">Updates</th>
+              <td>One year</td><td>Lifetime</td><td class="mine">Not your problem</td>
+            </tr>
+            <tr>
+              <th scope="row">Videos delivered</th>
+              <td>You run it</td><td>You run it</td><td class="mine">15 a month, ready to post</td>
+            </tr>
+            <tr>
+              <th scope="row">&nbsp;</th>
+              <td><a class="btn btn-line" data-buy="solo">Get Solo</a></td>
+              <td><a class="btn btn-line" data-buy="studio">Get Studio</a></td>
+              <td class="mine"><a class="btn btn-solid" data-buy="service">Talk about it</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="demand lift">
+      <div class="stack-tight">
+        <span class="count" id="count">&mdash;</span>
+        <span class="count-label">people have said they want this</span>
+        <span class="quiet" id="count-note">No email, no account &mdash; just a count.</span>
+      </div>
+      <button class="btn btn-solid" id="want" type="button">
+        I want this
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 3v9M3 7.5h9"/></svg>
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <div class="stack">
+      <h2 class="enter">Questions people actually ask.</h2>
+      <div>
+        <details>
+          <summary>Do I need a powerful machine?
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          </summary>
+          <p>An NVIDIA GPU makes it comfortable — the log above is one desktop card turning out a 48-second video in 91 seconds. It runs on CPU, more slowly. Everything else is ffmpeg, which runs anywhere.</p>
+        </details>
+        <details>
+          <summary>Is anything sent to a server?
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          </summary>
+          <p>Only what you ask for: stock footage searches, and the upload itself when you publish. Writing, voice, transcription and rendering never leave the machine.</p>
+        </details>
+        <details>
+          <summary>Will AI-made video get my channel demonetised?
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          </summary>
+          <p>Platforms act against mass-produced, templated content with no original input — not against AI assistance. mediaaut rotates layouts between videos and holds each channel to a stated editorial angle, which is what that distinction actually turns on.</p>
+        </details>
+        <details>
+          <summary>Can I use my own voice?
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          </summary>
+          <p>Yes. Drop a clean sample into the voices folder and the narration is cloned from it.</p>
+        </details>
+        <details>
+          <summary>What happens when I get stuck?
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9"/></svg>
+          </summary>
+          <p>You email, and the person who wrote it answers. There is no support tier.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>mediaaut &mdash; local-first video production</span>
+    <span>Runs on your machine. Bills you nothing per video.</span>
+  </footer>
+</div>
+
+<script id="state" type="application/json">{"want":0}</script>
+
+<script>
+(function () {
+  /* =====================================================================
+     CAISSE — coller ici les trois liens de paiement, et rien d'autre.
+     Tant qu'une valeur reste vide, son bouton s'affiche desactive plutot
+     que de pointer nulle part : une page publiee ne doit jamais porter un
+     lien mort. Des qu'une URL est renseignee, le bouton devient actif.
+
+     Prendre un « merchant of record » (Lemon Squeezy, Gumroad, Paddle) et
+     non Stripe seul : vendre un produit numerique a un particulier dans
+     l'UE rend la TVA due dans SON pays, et seul un merchant of record la
+     collecte et la reverse a votre place.
+     ===================================================================== */
+  var CHECKOUT = {
+    solo:    "",
+    studio:  "",
+    service: ""
+  };
+
+  // Copie du document tel qu'il a ete publie, prise avant tout rendu et avant
+  // que la classe « js » n'existe : republier depuis le DOM vivant
+  // reinjecterait l'etat deja applique et les classes d'animation.
+  var PRISTINE = "<!doctype html>\n" + document.documentElement.outerHTML;
+
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.documentElement.classList.add("js");
+
+  function state() {
+    try { return JSON.parse(document.getElementById("state").textContent) || {}; }
+    catch (e) { return {}; }
+  }
+
+  /* ---- fond : oscilloscope au ralenti --------------------------------- */
+  var cv = document.getElementById("ambient");
+  var ctx = cv.getContext("2d");
+  var w = 0, h = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function size() {
+    w = cv.clientWidth; h = cv.clientHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  size();
+  addEventListener("resize", size, { passive: true });
+
+  // Trois ondes lentes, de periodes premieres entre elles : le motif ne se
+  // repete jamais a l'oeil, sans qu'aucun aleatoire ne soit necessaire.
+  var WAVES = [
+    { amp: 0.16, len: 0.85, spd: 0.011, hue: "72",  a: 0.16 },
+    { amp: 0.11, len: 1.31, spd: -0.008, hue: "192", a: 0.13 },
+    { amp: 0.07, len: 2.17, spd: 0.005, hue: "72",  a: 0.08 }
+  ];
+
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+
+    // Graticule : la grille d'un instrument de mesure, presque invisible.
+    ctx.strokeStyle = "oklch(0.318 0.023 252 / .5)";
+    ctx.lineWidth = 1;
+    for (var gx = 0; gx <= w; gx += 96) {
+      ctx.beginPath(); ctx.moveTo(gx + .5, 0); ctx.lineTo(gx + .5, h); ctx.stroke();
+    }
+
+    var mid = h * 0.5;
+    for (var i = 0; i < WAVES.length; i++) {
+      var s = WAVES[i];
+      ctx.beginPath();
+      for (var x = 0; x <= w; x += 4) {
+        var p = (x / w) * Math.PI * 2 * s.len + t * s.spd;
+        var y = mid + Math.sin(p) * (h * s.amp) * Math.sin(x / w * Math.PI);
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = "oklch(0.79 0.13 " + s.hue + " / " + s.a + ")";
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
+  }
+
+  var frame = 0, running = true;
+  function loop() {
+    if (!running) return;
+    frame += 1;
+    draw(frame);
+    requestAnimationFrame(loop);
+  }
+  if (reduced) { draw(0); } else { loop(); }
+  document.addEventListener("visibilitychange", function () {
+    running = !document.hidden && !reduced;
+    if (running) loop();
+  });
+
+  /* ---- entrees a l'ecran ---------------------------------------------- */
+  var watched = document.querySelectorAll(".enter, .lift, .link");
+  if ("IntersectionObserver" in window && !reduced) {
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        var el = e.target;
+        var d = parseInt(el.dataset.delay || "0", 10);
+        setTimeout(function () { el.classList.add("seen"); }, d);
+        io.unobserve(el);
+      });
+    }, { rootMargin: "0px 0px -12% 0px", threshold: 0.05 });
+    watched.forEach(function (el) { io.observe(el); });
+  } else {
+    watched.forEach(function (el) { el.classList.add("seen"); });
+  }
+
+  /* ---- journal de rendu ------------------------------------------------ */
+  var STAGES = [
+    ["00:00", "writing the script", "4.1 s"],
+    ["00:04", "synthesising voice, 3 groups", "34.9 s"],
+    ["00:39", "transcribing, word-level", "3.2 s"],
+    ["00:42", "planning 12 overlays", "30.6 s"],
+    ["01:13", "encoding with burned subtitles", "22.7 s"],
+    ["01:35", "done", ""]
+  ];
+
+  var log = document.getElementById("log");
+  var rows = STAGES.map(function (s) {
+    var row = document.createElement("div");
+    row.className = "row";
+    var at = document.createElement("span"); at.className = "at"; at.textContent = s[0];
+    var what = document.createElement("span"); what.className = "what"; what.textContent = s[1];
+    var took = document.createElement("span"); took.className = "took"; took.textContent = s[2];
+    row.append(at, what, took);
+    log.appendChild(row);
+    return row;
+  });
+
+  // Le curseur descend la liste. Le contenu est deja lisible : l'animation
+  // souligne une progression, elle ne revele rien.
+  if (!reduced) {
+    var i = 0;
+    (function step() {
+      rows.forEach(function (r) { r.classList.remove("active"); });
+      rows[i].classList.add("active");
+      i = (i + 1) % rows.length;
+      setTimeout(step, i === 0 ? 2600 : 900);
+    })();
+  }
+
+  /* ---- caisse ---------------------------------------------------------- */
+  document.querySelectorAll("[data-buy]").forEach(function (el) {
+    var url = CHECKOUT[el.dataset.buy];
+    if (url) {
+      el.setAttribute("href", url);
+      el.setAttribute("rel", "noopener");
+    } else {
+      el.setAttribute("aria-disabled", "true");
+      el.setAttribute("disabled", "");
+      el.textContent = "Available soon";
+    }
+  });
+
+  /* ---- signal de demande ---------------------------------------------- */
+  var out = document.getElementById("count");
+  var note = document.getElementById("count-note");
+  var button = document.getElementById("want");
+  var n = typeof state().want === "number" ? state().want : 0;
+
+  // Le compteur monte jusqu'a sa valeur quand il entre a l'ecran.
+  function rollTo(target) {
+    if (reduced || target === 0) { out.textContent = target; return; }
+    var start = performance.now(), from = 0, dur = 900;
+    (function tick(now) {
+      var k = Math.min(1, (now - start) / dur);
+      var eased = 1 - Math.pow(1 - k, 4);
+      out.textContent = Math.round(from + (target - from) * eased);
+      if (k < 1) requestAnimationFrame(tick);
+    })(start);
+  }
+
+  if ("IntersectionObserver" in window) {
+    var co = new IntersectionObserver(function (es) {
+      if (es[0].isIntersecting) { rollTo(n); co.disconnect(); }
+    }, { threshold: 0.4 });
+    co.observe(out);
+  } else { out.textContent = n; }
+
+  button.addEventListener("click", function () {
+    if (button.disabled) return;
+    button.disabled = true;
+    out.textContent = ++n;
+    button.textContent = "Counted";
+
+    if (!window.claude || typeof window.claude.use !== "function") {
+      note.textContent = "Counted on this device only."; return;
+    }
+    window.claude.use("artifact").then(function (api) {
+      if (!api) { note.textContent = "Counted on this device only."; return; }
+      var next = state();
+      next.want = (typeof next.want === "number" ? next.want : 0) + 1;
+      var html = PRISTINE.replace(
+        /(<script id="state" type="application\/json">)[\s\S]*?(<\/script>)/,
+        function (m, open, close) {
+          return open + JSON.stringify(next).replace(/</g, "\\u003c") + close;
+        }
+      );
+      return api.publish(html).then(function () { note.textContent = "Saved for everyone."; });
+    }).catch(function () { note.textContent = "Counted on this device only."; });
+  });
+})();
+</script>
